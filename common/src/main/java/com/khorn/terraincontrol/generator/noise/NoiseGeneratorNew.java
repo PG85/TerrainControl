@@ -4,182 +4,171 @@ import java.util.Random;
 
 public class NoiseGeneratorNew {
 
-    private static int[][] e = new int[][] { { 1, 1, 0}, { -1, 1, 0}, { 1, -1, 0}, { -1, -1, 0}, { 1, 0, 1}, { -1, 0, 1}, { 1, 0, -1}, { -1, 0, -1}, { 0, 1, 1}, { 0, -1, 1}, { 0, 1, -1}, { 0, -1, -1}};
-    public static final double a = Math.sqrt(3.0D);
-    private int[] f;
-    public double b;
-    public double c;
-    public double d;
-    private static final double g = 0.5D * (a - 1.0D);
-    private static final double h = (3.0D - a) / 6.0D;
+    private static final class Float2 {
+        public final float x, y;
+
+        public Float2(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private static final Float2[] GRAD_2D = {
+        new Float2(-1, -1), new Float2(1, -1), new Float2(-1, 1), new Float2(1, 1),
+        new Float2(0, -1), new Float2(-1, 0), new Float2(0, 1), new Float2(1, 0),
+    };
+
+    private int seed;
 
     public NoiseGeneratorNew() {
         this(new Random());
     }
 
     public NoiseGeneratorNew(Random random) {
-        this.f = new int[512];
-        this.b = random.nextDouble() * 256.0D;
-        this.c = random.nextDouble() * 256.0D;
-        this.d = random.nextDouble() * 256.0D;
 
-        int i;
-
-        for (i = 0; i < 256; this.f[i] = i++) {
-            ;
-        }
-
-        for (i = 0; i < 256; ++i) {
-            int j = random.nextInt(256 - i) + i;
-            int k = this.f[i];
-
-            this.f[i] = this.f[j];
-            this.f[j] = k;
-            this.f[i + 256] = this.f[i];
-        }
+        seed = (int)random.nextLong();
     }
 
-    private static int a(double d0) {
-        return d0 > 0.0D ? (int) d0 : (int) d0 - 1;
+    private static int FastFloor(float f) {
+        return (f >= 0 ? (int) f : (int) f - 1);
     }
 
-    private static double a(int[] aint, double d0, double d1) {
-        return (double) aint[0] * d0 + (double) aint[1] * d1;
+    // Hashing
+    private final static int X_PRIME = 1619;
+    private final static int Y_PRIME = 31337;
+    //private final static int Z_PRIME = 6971;
+    //private final static int W_PRIME = 1013;
+
+    private static float GradCoord2D(int seed, int x, int y, float xd, float yd) {
+        int hash = seed;
+        hash ^= X_PRIME * x;
+        hash ^= Y_PRIME * y;
+
+        hash = hash * hash * hash * 60493;
+        hash = (hash >> 13) ^ hash;
+
+        Float2 g = GRAD_2D[hash & 7];
+
+        return xd * g.x + yd * g.y;
     }
 
-    public double a(double d0, double d1) {
-        double d2 = 0.5D * (a - 1.0D);
-        double d3 = (d0 + d1) * d2;
-        int i = a(d0 + d3);
-        int j = a(d1 + d3);
-        double d4 = (3.0D - a) / 6.0D;
-        double d5 = (double) (i + j) * d4;
-        double d6 = (double) i - d5;
-        double d7 = (double) j - d5;
-        double d8 = d0 - d6;
-        double d9 = d1 - d7;
-        byte b0;
-        byte b1;
+    private final static float SQRT3 = 1.7320508075f;
+    private final static float F2 = 0.5f * (SQRT3 - 1.0f);
+    private final static float G2 = (3.0f - SQRT3) / 6.0f;
 
-        if (d8 > d9) {
-            b0 = 1;
-            b1 = 0;
+    public double a(double x, double y) {
+        float xf = (float)x;
+        float yf = (float)y;
+
+        float f = (xf + yf) * F2;
+        int i = FastFloor(xf + f);
+        int j = FastFloor(yf + f);
+
+        float t = (i + j) * G2;
+        float X0 = i - t;
+        float Y0 = j - t;
+
+        float x0 = xf - X0;
+        float y0 = yf - Y0;
+
+        int i1, j1;
+        if (x0 > y0) {
+            i1 = 1;
+            j1 = 0;
         } else {
-            b0 = 0;
-            b1 = 1;
+            i1 = 0;
+            j1 = 1;
         }
 
-        double d10 = d8 - (double) b0 + d4;
-        double d11 = d9 - (double) b1 + d4;
-        double d12 = d8 - 1.0D + 2.0D * d4;
-        double d13 = d9 - 1.0D + 2.0D * d4;
-        int k = i & 255;
-        int l = j & 255;
-        int i1 = this.f[k + this.f[l]] % 12;
-        int j1 = this.f[k + b0 + this.f[l + b1]] % 12;
-        int k1 = this.f[k + 1 + this.f[l + 1]] % 12;
-        double d14 = 0.5D - d8 * d8 - d9 * d9;
-        double d15;
+        float x1 = x0 - i1 + G2;
+        float y1 = y0 - j1 + G2;
+        float y2 = y0 - (2 * G2);
+        float x2 = x0 - (2 * G2);
 
-        if (d14 < 0.0D) {
-            d15 = 0.0D;
-        } else {
-            d14 *= d14;
-            d15 = d14 * d14 * a(e[i1], d8, d9);
+        float n0, n1, n2;
+
+        t = (float) 0.5 - x0 * x0 - y0 * y0;
+        if (t < 0) n0 = 0;
+        else {
+            t *= t;
+            n0 = t * t * GradCoord2D(seed, i, j, x0, y0);
         }
 
-        double d16 = 0.5D - d10 * d10 - d11 * d11;
-        double d17;
-
-        if (d16 < 0.0D) {
-            d17 = 0.0D;
-        } else {
-            d16 *= d16;
-            d17 = d16 * d16 * a(e[j1], d10, d11);
+        t = (float) 0.5 - x1 * x1 - y1 * y1;
+        if (t < 0) n1 = 0;
+        else {
+            t *= t;
+            n1 = t * t * GradCoord2D(seed, i + i1, j + j1, x1, y1);
         }
 
-        double d18 = 0.5D - d12 * d12 - d13 * d13;
-        double d19;
-
-        if (d18 < 0.0D) {
-            d19 = 0.0D;
-        } else {
-            d18 *= d18;
-            d19 = d18 * d18 * a(e[k1], d12, d13);
+        t = (float) 0.5 - x2 * x2 - y2 * y2;
+        if (t < 0) n2 = 0;
+        else {
+            t *= t;
+            n2 = t * t * GradCoord2D(seed, i + 1, j + 1, x2, y2);
         }
 
-        return 70.0D * (d15 + d17 + d19);
+        return 70f * (n0 + n1 + n2);
     }
 
-    public void a(double[] adouble, double d0, double d1, int i, int j, double d2, double d3, double d4) {
-        int k = 0;
+    public void a(double[] doubleArray, double xStart, double yStart, int xSize, int ySize, double xScale, double yScale, double noiseScale) {
+        int index = 0;
 
-        for (int l = 0; l < j; ++l) {
-            double d5 = (d1 + (double) l) * d3 + this.c;
+        for (int iy = 0; iy < ySize; ++iy) {
+            float yf = (float)((yStart + iy) * yScale);
 
-            for (int i1 = 0; i1 < i; ++i1) {
-                double d6 = (d0 + (double) i1) * d2 + this.b;
-                double d7 = (d6 + d5) * g;
-                int j1 = a(d6 + d7);
-                int k1 = a(d5 + d7);
-                double d8 = (double) (j1 + k1) * h;
-                double d9 = (double) j1 - d8;
-                double d10 = (double) k1 - d8;
-                double d11 = d6 - d9;
-                double d12 = d5 - d10;
-                byte b0;
-                byte b1;
+            for (int ix = 0; ix < xSize; ++ix) {
+                float xf = (float)((xStart + ix) * xScale);
 
-                if (d11 > d12) {
-                    b0 = 1;
-                    b1 = 0;
+                float f = (xf + yf) * F2;
+                int i = FastFloor(xf + f);
+                int j = FastFloor(yf + f);
+
+                float t = (i + j) * G2;
+                float X0 = i - t;
+                float Y0 = j - t;
+
+                float x0 = xf - X0;
+                float y0 = yf - Y0;
+
+                int i1, j1;
+                if (x0 > y0) {
+                    i1 = 1;
+                    j1 = 0;
                 } else {
-                    b0 = 0;
-                    b1 = 1;
+                    i1 = 0;
+                    j1 = 1;
                 }
 
-                double d13 = d11 - (double) b0 + h;
-                double d14 = d12 - (double) b1 + h;
-                double d15 = d11 - 1.0D + 2.0D * h;
-                double d16 = d12 - 1.0D + 2.0D * h;
-                int l1 = j1 & 255;
-                int i2 = k1 & 255;
-                int j2 = this.f[l1 + this.f[i2]] % 12;
-                int k2 = this.f[l1 + b0 + this.f[i2 + b1]] % 12;
-                int l2 = this.f[l1 + 1 + this.f[i2 + 1]] % 12;
-                double d17 = 0.5D - d11 * d11 - d12 * d12;
-                double d18;
+                float x1 = x0 - i1 + G2;
+                float y1 = y0 - j1 + G2;
+                float y2 = y0 - (2 * G2);
+                float x2 = x0 - (2 * G2);
 
-                if (d17 < 0.0D) {
-                    d18 = 0.0D;
-                } else {
-                    d17 *= d17;
-                    d18 = d17 * d17 * a(e[j2], d11, d12);
+                float n0, n1, n2;
+
+                t = (float) 0.5 - x0 * x0 - y0 * y0;
+                if (t < 0) n0 = 0;
+                else {
+                    t *= t;
+                    n0 = t * t * GradCoord2D(seed, i, j, x0, y0);
                 }
 
-                double d19 = 0.5D - d13 * d13 - d14 * d14;
-                double d20;
-
-                if (d19 < 0.0D) {
-                    d20 = 0.0D;
-                } else {
-                    d19 *= d19;
-                    d20 = d19 * d19 * a(e[k2], d13, d14);
+                t = (float) 0.5 - x1 * x1 - y1 * y1;
+                if (t < 0) n1 = 0;
+                else {
+                    t *= t;
+                    n1 = t * t * GradCoord2D(seed, i + i1, j + j1, x1, y1);
                 }
 
-                double d21 = 0.5D - d15 * d15 - d16 * d16;
-                double d22;
-
-                if (d21 < 0.0D) {
-                    d22 = 0.0D;
-                } else {
-                    d21 *= d21;
-                    d22 = d21 * d21 * a(e[l2], d15, d16);
+                t = (float) 0.5 - x2 * x2 - y2 * y2;
+                if (t < 0) n2 = 0;
+                else {
+                    t *= t;
+                    n2 = t * t * GradCoord2D(seed, i + 1, j + 1, x2, y2);
                 }
 
-                int i3 = k++;
-
-                adouble[i3] += 70.0D * (d18 + d20 + d22) * d4;
+                doubleArray[index++] += 70.0D * (n0 + n1 + n2) * noiseScale;
             }
         }
     }
