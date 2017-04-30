@@ -4,114 +4,137 @@ import java.util.Random;
 
 public class NoiseGeneratorPerlin
 {
-    private int permutations[];
-    public double xCoord;
-    public double yCoord;
-    public double zCoord;
+    private static final class Float2 {
+        public final float x, y;
 
+        public Float2(float x, float y) {
+            this.x = x;
+            this.y = y;
+        }
+    }
+
+    private static final class Float3 {
+        public final float x, y, z;
+
+        public Float3(float x, float y, float z) {
+            this.x = x;
+            this.y = y;
+            this.z = z;
+        }
+    }
+
+    private static final Float2[] GRAD_2D = {
+        new Float2(-1, -1), new Float2(1, -1), new Float2(-1, 1), new Float2(1, 1),
+        new Float2(0, -1), new Float2(-1, 0), new Float2(0, 1), new Float2(1, 0),
+    };
+
+    private static final Float3[] GRAD_3D = {
+        new Float3(1, 1, 0), new Float3(-1, 1, 0), new Float3(1, -1, 0), new Float3(-1, -1, 0),
+        new Float3(1, 0, 1), new Float3(-1, 0, 1), new Float3(1, 0, -1), new Float3(-1, 0, -1),
+        new Float3(0, 1, 1), new Float3(0, -1, 1), new Float3(0, 1, -1), new Float3(0, -1, -1),
+        new Float3(1, 1, 0), new Float3(0, -1, 1), new Float3(-1, 1, 0), new Float3(0, -1, -1),
+    };
+
+    private int seed;
 
     public NoiseGeneratorPerlin(Random random)
     {
-        permutations = new int[512];
-        xCoord = random.nextDouble() * 256D;
-        yCoord = random.nextDouble() * 256D;
-        zCoord = random.nextDouble() * 256D;
-        for (int i = 0; i < 256; i++)
-        {
-            permutations[i] = i;
-        }
-
-        for (int j = 0; j < 256; j++)
-        {
-            int k = random.nextInt(256 - j) + j;
-            int l = permutations[j];
-            permutations[j] = permutations[k];
-            permutations[k] = l;
-            permutations[j + 256] = permutations[j];
-        }
+        seed = (int)random.nextLong();
     }
 
-    public final double lerp(double d, double d1, double d2)
-    {
-        return d1 + d * (d2 - d1);
+    private static float Lerp(float a, float b, float t) {
+        return a + t * (b - a);
+    }
+    private static int FastFloor(float f) {
+        return (f >= 0 ? (int) f : (int) f - 1);
+    }
+    private static float InterpQuinticFunc(float t) {
+        return t * t * t * (t * (t * 6 - 15) + 10);
     }
 
-    public final double func_4110_a(int i, double d, double d1)
-    {
-        int j = i & 0xf;
-        double d2 = (double) (1 - ((j & 8) >> 3)) * d;
-        double d3 = j >= 4 ? j != 12 && j != 14 ? d1 : d : 0.0D;
-        return ((j & 1) != 0 ? -d2 : d2) + ((j & 2) != 0 ? -d3 : d3);
+    // Hashing
+    private final static int X_PRIME = 1619;
+    private final static int Y_PRIME = 31337;
+    private final static int Z_PRIME = 6971;
+    //private final static int W_PRIME = 1013;
+
+    private static float GradCoord2D(int seed, int x, int y, float xd, float yd) {
+        int hash = seed;
+        hash ^= X_PRIME * x;
+        hash ^= Y_PRIME * y;
+
+        hash = hash * hash * hash * 60493;
+        hash = (hash >> 13) ^ hash;
+
+        Float2 g = GRAD_2D[hash & 7];
+
+        return xd * g.x + yd * g.y;
     }
 
-    public final double grad(int i, double d, double d1, double d2)
-    {
-        int j = i & 0xf;
-        double d3 = j >= 8 ? d1 : d;
-        double d4 = j >= 4 ? j != 12 && j != 14 ? d2 : d : d1;
-        return ((j & 1) != 0 ? -d3 : d3) + ((j & 2) != 0 ? -d4 : d4);
+    private static float GradCoord3D(int seed, int x, int y, int z, float xd, float yd, float zd) {
+        int hash = seed;
+        hash ^= X_PRIME * x;
+        hash ^= Y_PRIME * y;
+        hash ^= Z_PRIME * z;
+
+        hash = hash * hash * hash * 60493;
+        hash = (hash >> 13) ^ hash;
+
+        Float3 g = GRAD_3D[hash & 15];
+
+        return xd * g.x + yd * g.y + zd * g.z;
     }
 
     public void populateNoiseArray3D(double NoiseArray[], double xOffset, double yOffset, double zOffset, int xSize, int ySize, int zSize, double xScale, double yScale, double zScale, double noiseScale)
     {
-        int i1 = 0;
-        double d7 = 1.0D / noiseScale;
-        int i2 = -1;
-        double d13 = 0.0D;
-        double d15 = 0.0D;
-        double d16 = 0.0D;
-        double d18 = 0.0D;
-        for (int i5 = 0; i5 < xSize; i5++)
+        int index = 0;
+        double invNoiseScale = 1.0D / noiseScale;
+
+        int y0Last = 0;
+        float xf00, xf10, xf01, xf11;
+        float zf0 = 0;
+        float zf1 = 0;
+
+        for (int ix = 0; ix < xSize; ix++)
         {
-            double d20 = xOffset + (double) i5 * xScale + xCoord;
-            int k5 = (int) d20;
-            if (d20 < (double) k5)
+            float x = (float)(xOffset + ix * xScale);
+            int x0 = FastFloor(x);
+            int x1 = x0 + 1;
+            float xd0 = x - x0;
+            float xd1 = xd0 - 1;
+            float xs = InterpQuinticFunc(x - x0);
+
+            for (int iz = 0; iz < zSize; iz++)
             {
-                k5--;
-            }
-            int i6 = k5 & 0xff;
-            d20 -= k5;
-            double d22 = d20 * d20 * d20 * (d20 * (d20 * 6D - 15D) + 10D);
-            for (int j6 = 0; j6 < zSize; j6++)
-            {
-                double d24 = zOffset + (double) j6 * zScale + zCoord;
-                int k6 = (int) d24;
-                if (d24 < (double) k6)
+                float z = (float)(zOffset + iz * zScale);
+                int z0 = FastFloor(z);
+                int z1 = z0 + 1;
+                float zd0 = z - z0;
+                float zd1 = zd0 - 1;
+                float zs = InterpQuinticFunc(z - z0);
+
+                for (int iy = 0; iy < ySize; iy++)
                 {
-                    k6--;
-                }
-                int l6 = k6 & 0xff;
-                d24 -= k6;
-                double d25 = d24 * d24 * d24 * (d24 * (d24 * 6D - 15D) + 10D);
-                for (int i7 = 0; i7 < ySize; i7++)
-                {
-                    double d26 = yOffset + (double) i7 * yScale + yCoord;
-                    int j7 = (int) d26;
-                    if (d26 < (double) j7)
-                    {
-                        j7--;
+                    float y = (float)(yOffset + iy * yScale);
+                    int y0 = FastFloor(y);
+                    float ys = InterpQuinticFunc(y - y0);
+
+                    if (iy == 0 || y0 != y0Last) {
+                        y0Last = y0;
+                        int y1 = y0 + 1;
+                        float yd0 = y - y0;
+                        float yd1 = yd0 - 1;
+
+                        xf00 = Lerp(GradCoord3D(seed, x0, y0, z0, xd0, yd0, zd0), GradCoord3D(seed, x1, y0, z0, xd1, yd0, zd0), xs);
+                        xf01 = Lerp(GradCoord3D(seed, x0, y0, z1, xd0, yd0, zd1), GradCoord3D(seed, x1, y0, z1, xd1, yd0, zd1), xs);
+                        xf10 = Lerp(GradCoord3D(seed, x0, y1, z0, xd0, yd1, zd0), GradCoord3D(seed, x1, y1, z0, xd1, yd1, zd0), xs);
+                        xf11 = Lerp(GradCoord3D(seed, x0, y1, z1, xd0, yd1, zd1), GradCoord3D(seed, x1, y1, z1, xd1, yd1, zd1), xs);
+
+                        zf0 = Lerp(xf00, xf01, zs);
+                        zf1 = Lerp(xf10, xf11, zs);
                     }
-                    int k7 = j7 & 0xff;
-                    d26 -= j7;
-                    double d27 = d26 * d26 * d26 * (d26 * (d26 * 6D - 15D) + 10D);
-                    if (i7 == 0 || k7 != i2)
-                    {
-                        i2 = k7;
-                        int j2 = permutations[i6] + k7;
-                        int k2 = permutations[j2] + l6;
-                        int l2 = permutations[j2 + 1] + l6;
-                        int i3 = permutations[i6 + 1] + k7;
-                        int k3 = permutations[i3] + l6;
-                        int l3 = permutations[i3 + 1] + l6;
-                        d13 = lerp(d22, grad(permutations[k2], d20, d26, d24), grad(permutations[k3], d20 - 1.0D, d26, d24));
-                        d15 = lerp(d22, grad(permutations[l2], d20, d26 - 1.0D, d24), grad(permutations[l3], d20 - 1.0D, d26 - 1.0D, d24));
-                        d16 = lerp(d22, grad(permutations[k2 + 1], d20, d26, d24 - 1.0D), grad(permutations[k3 + 1], d20 - 1.0D, d26, d24 - 1.0D));
-                        d18 = lerp(d22, grad(permutations[l2 + 1], d20, d26 - 1.0D, d24 - 1.0D), grad(permutations[l3 + 1], d20 - 1.0D, d26 - 1.0D, d24 - 1.0D));
-                    }
-                    double d28 = lerp(d27, d13, d15);
-                    double d29 = lerp(d27, d16, d18);
-                    double d30 = lerp(d25, d28, d29);
-                    NoiseArray[i1++] += d30 * d7;
+
+                    NoiseArray[index++] += Lerp(zf0, zf1, ys) * invNoiseScale;
                 }
             }
         }
@@ -119,38 +142,40 @@ public class NoiseGeneratorPerlin
 
     public void populateNoiseArray2D(double NoiseArray[], double xOffset, double zOffset, int xSize, int zSize, double xScale, double zScale, double noiseScale)
     {
-        int j3 = 0;
-        double d12 = 1.0D / noiseScale;
-        for (int i4 = 0; i4 < xSize; i4++)
+        int index = 0;
+        double invNoiseScale = 1.0D / noiseScale;
+
+        int z0Last = 0;
+        float xf0 = 0;
+        float xf1 = 0;
+
+        for (int ix = 0; ix < xSize; ix++)
         {
-            double d14 = xOffset + (double) i4 * xScale + xCoord;
-            int j4 = (int) d14;
-            if (d14 < (double) j4)
+            float x = (float)(xOffset + ix * xScale);
+            int x0 = FastFloor(x);
+            int x1 = x0 + 1;
+            float xd0 = x - x0;
+            float xd1 = xd0 - 1;
+            float xs = InterpQuinticFunc(x - x0);
+
+            for (int iz = 0; iz < zSize; iz++)
             {
-                j4--;
-            }
-            int k4 = j4 & 0xff;
-            d14 -= j4;
-            double d17 = d14 * d14 * d14 * (d14 * (d14 * 6D - 15D) + 10D);
-            for (int l4 = 0; l4 < zSize; l4++)
-            {
-                double d19 = zOffset + (double) l4 * zScale + zCoord;
-                int j5 = (int) d19;
-                if (d19 < (double) j5)
+                float z = (float)(zOffset + iz * zScale);
+                int z0 = FastFloor(z);
+                float zs = InterpQuinticFunc(z - z0);
+
+                if (iz == 0 || z0 != z0Last)
                 {
-                    j5--;
+                    z0Last = z0;
+                    int z1 = z0 + 1;
+                    float zd0 = z - z0;
+                    float zd1 = zd0 - 1;
+
+                    xf0 = Lerp(GradCoord2D(seed, x0, z0, xd0, zd0), GradCoord2D(seed, x1, z0, xd1, zd0), xs);
+                    xf1 = Lerp(GradCoord2D(seed, x0, z1, xd0, zd1), GradCoord2D(seed, x1, z1, xd1, zd1), xs);
                 }
-                int l5 = j5 & 0xff;
-                d19 -= j5;
-                double d21 = d19 * d19 * d19 * (d19 * (d19 * 6D - 15D) + 10D);
-                int l = permutations[k4];
-                int j1 = permutations[l] + l5;
-                int k1 = permutations[k4 + 1];
-                int l1 = permutations[k1] + l5;
-                double d9 = lerp(d17, func_4110_a(permutations[j1], d14, d19), grad(permutations[l1], d14 - 1.0D, 0.0D, d19));
-                double d11 = lerp(d17, grad(permutations[j1 + 1], d14, 0.0D, d19 - 1.0D), grad(permutations[l1 + 1], d14 - 1.0D, 0.0D, d19 - 1.0D));
-                double d23 = lerp(d21, d9, d11);
-                NoiseArray[j3++] += d23 * d12;
+
+                NoiseArray[index++] += Lerp(xf0, xf1, zs) * invNoiseScale;
             }
         }
 
