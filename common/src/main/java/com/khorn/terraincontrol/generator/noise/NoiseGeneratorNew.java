@@ -82,8 +82,8 @@ public class NoiseGeneratorNew {
 
         float x1 = x0 - i1 + G2;
         float y1 = y0 - j1 + G2;
-        float y2 = y0 - (2 * G2);
-        float x2 = x0 - (2 * G2);
+        float y2 = y0 - 1 + 2 * G2;
+        float x2 = x0 - 1 + 2 * G2;
 
         float n0, n1, n2;
 
@@ -142,8 +142,8 @@ public class NoiseGeneratorNew {
 
                 float x1 = x0 - i1 + G2;
                 float y1 = y0 - j1 + G2;
-                float y2 = y0 - (2 * G2);
-                float x2 = x0 - (2 * G2);
+                float y2 = y0 - 1 + 2 * G2;
+                float x2 = x0 - 1 + 2 * G2;
 
                 float n0, n1, n2;
 
