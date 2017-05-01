@@ -13,7 +13,7 @@ import com.khorn.terraincontrol.configuration.WorldConfig;
 import com.khorn.terraincontrol.generator.biome.BiomeGenerator;
 import com.khorn.terraincontrol.generator.biome.OldBiomeGenerator;
 import com.khorn.terraincontrol.generator.biome.OutputType;
-import com.khorn.terraincontrol.generator.noise.NoiseGeneratorNewOctaves;
+import com.khorn.terraincontrol.generator.noise.NoiseGeneratorSimplexOctaves;
 import com.khorn.terraincontrol.generator.noise.NoiseGeneratorPerlinOctaves;
 import com.khorn.terraincontrol.generator.terrain.CavesGen;
 import com.khorn.terraincontrol.generator.terrain.RavinesGen;
@@ -42,7 +42,7 @@ public class ChunkProviderTC
     private final NoiseGeneratorPerlinOctaves noiseGen1;
     private final NoiseGeneratorPerlinOctaves noiseGen2;
     private final NoiseGeneratorPerlinOctaves noiseGen3;
-    private final NoiseGeneratorNewOctaves noiseGen4;
+    private final NoiseGeneratorSimplexOctaves noiseGen4;
     private final NoiseGeneratorPerlinOctaves noiseGen5;
     private final NoiseGeneratorPerlinOctaves noiseGen6;
     private double[] rawTerrain;
@@ -94,7 +94,7 @@ public class ChunkProviderTC
         this.noiseGen1 = new NoiseGeneratorPerlinOctaves(this.random, 16);
         this.noiseGen2 = new NoiseGeneratorPerlinOctaves(this.random, 16);
         this.noiseGen3 = new NoiseGeneratorPerlinOctaves(this.random, 8);
-        this.noiseGen4 = new NoiseGeneratorNewOctaves(this.random, 4);
+        this.noiseGen4 = new NoiseGeneratorSimplexOctaves(this.random, 4);
         this.noiseGen5 = new NoiseGeneratorPerlinOctaves(this.random, 10);
         this.noiseGen6 = new NoiseGeneratorPerlinOctaves(this.random, 16);
 
@@ -292,8 +292,8 @@ public class ChunkProviderTC
         int dryBlocksOnSurface = 256;
 
         final double d1 = 0.03125D;
-        this.noise4 = this.noiseGen4.a(this.noise4, chunkCoord.getBlockX(), chunkCoord.getBlockZ(), CHUNK_X_SIZE,
-                CHUNK_Z_SIZE, d1 * 2.0D, d1 * 2.0D, 1.0D);
+        this.noise4 = this.noiseGen4.getNoiseOctaves(this.noise4, chunkCoord.getBlockX(), chunkCoord.getBlockZ(), CHUNK_X_SIZE,
+                                                     CHUNK_Z_SIZE, d1 * 2.0D, d1 * 2.0D, 1.0D);
 
         GeneratingChunk generatingChunk = new GeneratingChunk(random, waterLevel, noise4, heightCap);
 

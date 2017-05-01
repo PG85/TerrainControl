@@ -2,7 +2,7 @@ package com.khorn.terraincontrol.generator.noise;
 
 import java.util.Random;
 
-public class NoiseGeneratorNew {
+public class NoiseGeneratorSimplex {
 
     private static final class Float2 {
         public final float x, y;
@@ -20,11 +20,11 @@ public class NoiseGeneratorNew {
 
     private int seed;
 
-    public NoiseGeneratorNew() {
+    public NoiseGeneratorSimplex() {
         this(new Random());
     }
 
-    public NoiseGeneratorNew(Random random) {
+    public NoiseGeneratorSimplex(Random random) {
 
         seed = (int)random.nextLong();
     }
@@ -56,7 +56,7 @@ public class NoiseGeneratorNew {
     private final static float F2 = 0.5f * (SQRT3 - 1.0f);
     private final static float G2 = (3.0f - SQRT3) / 6.0f;
 
-    public double a(double x, double y) {
+    public double getNoise(double x, double y) {
         float xf = (float)x;
         float yf = (float)y;
 
@@ -111,7 +111,7 @@ public class NoiseGeneratorNew {
         return 70f * (n0 + n1 + n2);
     }
 
-    public void a(double[] doubleArray, double xStart, double yStart, int xSize, int ySize, double xScale, double yScale, double noiseScale) {
+    public void getNoise(double[] doubleArray, double xStart, double yStart, int xSize, int ySize, double xScale, double yScale, double noiseScale) {
         int index = 0;
 
         for (int iy = 0; iy < ySize; ++iy) {

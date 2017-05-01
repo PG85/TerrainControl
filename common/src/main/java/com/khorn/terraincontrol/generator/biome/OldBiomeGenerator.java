@@ -3,7 +3,7 @@ package com.khorn.terraincontrol.generator.biome;
 
 import com.khorn.terraincontrol.LocalWorld;
 import com.khorn.terraincontrol.configuration.WorldConfig;
-import com.khorn.terraincontrol.generator.noise.NoiseGeneratorOldOctaves;
+import com.khorn.terraincontrol.generator.noise.NoiseGeneratorSimplexOctaves;
 import com.khorn.terraincontrol.util.minecraftTypes.DefaultBiome;
 
 import java.util.Random;
@@ -16,9 +16,9 @@ import java.util.Random;
 public class OldBiomeGenerator extends BiomeGenerator
 {
 
-    private NoiseGeneratorOldOctaves temperatureGenerator1;
-    private NoiseGeneratorOldOctaves wetnessGenerator;
-    private NoiseGeneratorOldOctaves temperatureGenerator2;
+    private NoiseGeneratorSimplexOctaves temperatureGenerator1;
+    private NoiseGeneratorSimplexOctaves wetnessGenerator;
+    private NoiseGeneratorSimplexOctaves temperatureGenerator2;
     
     public double[] oldTemperature1;
     public double[] oldWetness;
@@ -30,9 +30,9 @@ public class OldBiomeGenerator extends BiomeGenerator
     public OldBiomeGenerator(LocalWorld world)
     {
         super(world);
-        this.temperatureGenerator1 = new NoiseGeneratorOldOctaves(new Random(world.getSeed() * 9871L), 4);
-        this.wetnessGenerator = new NoiseGeneratorOldOctaves(new Random(world.getSeed() * 39811L), 4);
-        this.temperatureGenerator2 = new NoiseGeneratorOldOctaves(new Random(world.getSeed() * 543321L), 2);
+        this.temperatureGenerator1 = new NoiseGeneratorSimplexOctaves(new Random(world.getSeed() * 9871L), 4);
+        this.wetnessGenerator = new NoiseGeneratorSimplexOctaves(new Random(world.getSeed() * 39811L), 4);
+        this.temperatureGenerator2 = new NoiseGeneratorSimplexOctaves(new Random(world.getSeed() * 543321L), 2);
 
         if (!hasGeneratedBiomeDiagram)
         {
@@ -49,9 +49,9 @@ public class OldBiomeGenerator extends BiomeGenerator
         }
 
         WorldConfig worldConfig = world.getConfigs().getWorldConfig();
-        this.oldTemperature1 = this.temperatureGenerator1.a(this.oldTemperature1, x, z, xSize, xSize, 0.025000000372529D / worldConfig.oldBiomeSize, 0.025000000372529D / worldConfig.oldBiomeSize, 0.25D);
-        this.oldWetness = this.wetnessGenerator.a(this.oldWetness, x, z, xSize, xSize, 0.0500000007450581D / worldConfig.oldBiomeSize, 0.0500000007450581D / worldConfig.oldBiomeSize, 0.3333333333333333D);
-        this.oldTemperature2 = this.temperatureGenerator2.a(this.oldTemperature2, x, z, xSize, xSize, 0.25D / worldConfig.oldBiomeSize, 0.25D / worldConfig.oldBiomeSize, 0.5882352941176471D);
+        this.oldTemperature1 = this.temperatureGenerator1.getNoiseOctaves(this.oldTemperature1, x, z, xSize, xSize, 0.025000000372529D / worldConfig.oldBiomeSize, 0.025000000372529D / worldConfig.oldBiomeSize, 0.25D);
+        this.oldWetness = this.wetnessGenerator.getNoiseOctaves(this.oldWetness, x, z, xSize, xSize, 0.0500000007450581D / worldConfig.oldBiomeSize, 0.0500000007450581D / worldConfig.oldBiomeSize, 0.3333333333333333D);
+        this.oldTemperature2 = this.temperatureGenerator2.getNoiseOctaves(this.oldTemperature2, x, z, xSize, xSize, 0.25D / worldConfig.oldBiomeSize, 0.25D / worldConfig.oldBiomeSize, 0.5882352941176471D);
 
         int i = 0;
         for (int j = 0; j < xSize; j++)

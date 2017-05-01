@@ -5,7 +5,7 @@ import com.khorn.terraincontrol.TerrainControl;
 import com.khorn.terraincontrol.configuration.BiomeConfig;
 import com.khorn.terraincontrol.generator.ChunkBuffer;
 import com.khorn.terraincontrol.generator.GeneratingChunk;
-import com.khorn.terraincontrol.generator.noise.NoiseGeneratorNewOctaves;
+import com.khorn.terraincontrol.generator.noise.NoiseGeneratorSimplexOctaves;
 import com.khorn.terraincontrol.util.helpers.MathHelper;
 import com.khorn.terraincontrol.util.minecraftTypes.DefaultMaterial;
 
@@ -46,9 +46,9 @@ public class MesaSurfaceGenerator implements SurfaceGenerator
     private LocalMaterialData[] blockDataValuesArray;
     private boolean isForestMesa;
     private boolean isBryceMesa;
-    private NoiseGeneratorNewOctaves noiseGenBryce1;
-    private NoiseGeneratorNewOctaves noiseGenBryce2;
-    private NoiseGeneratorNewOctaves noiseGenBlockData;
+    private NoiseGeneratorSimplexOctaves noiseGenBryce1;
+    private NoiseGeneratorSimplexOctaves noiseGenBryce2;
+    private NoiseGeneratorSimplexOctaves noiseGenBlockData;
 
     private final LocalMaterialData hardenedClay;
     private final LocalMaterialData redSand;
@@ -78,7 +78,7 @@ public class MesaSurfaceGenerator implements SurfaceGenerator
 
     private LocalMaterialData getBlockData(int i, int j, int k)
     {
-        int l = (int) Math.round(this.noiseGenBlockData.a(i * 1.0D / 512.0D, i * 1.0D / 512.0D) * 2.0D);
+        int l = (int) Math.round(this.noiseGenBlockData.getNoiseOctaves(i * 1.0D / 512.0D, i * 1.0D / 512.0D) * 2.0D);
 
         return this.blockDataValuesArray[(j + l + 64) % 64];
     }
@@ -88,7 +88,7 @@ public class MesaSurfaceGenerator implements SurfaceGenerator
         this.blockDataValuesArray = new LocalMaterialData[64];
         Arrays.fill(this.blockDataValuesArray, this.hardenedClay);
 
-        this.noiseGenBlockData = new NoiseGeneratorNewOctaves(random, 1);
+        this.noiseGenBlockData = new NoiseGeneratorSimplexOctaves(random, 1);
 
         int j;
 
@@ -191,18 +191,18 @@ public class MesaSurfaceGenerator implements SurfaceGenerator
             {
                 Random newRandom = new Random(generatingChunk.random.nextLong());
 
-                this.noiseGenBryce1 = new NoiseGeneratorNewOctaves(newRandom, 4);
-                this.noiseGenBryce2 = new NoiseGeneratorNewOctaves(newRandom, 1);
+                this.noiseGenBryce1 = new NoiseGeneratorSimplexOctaves(newRandom, 4);
+                this.noiseGenBryce2 = new NoiseGeneratorSimplexOctaves(newRandom, 1);
             }
 
             int k = (xInWorld & -16) + (zInWorld & 15);
             int l = (zInWorld & -16) + (xInWorld & 15);
-            double bryceNoiseValue = Math.min(Math.abs(noise), this.noiseGenBryce1.a(k * 0.25D, l * 0.25D));
+            double bryceNoiseValue = Math.min(Math.abs(noise), this.noiseGenBryce1.getNoiseOctaves(k * 0.25D, l * 0.25D));
 
             if (bryceNoiseValue > 0.0D)
             {
                 double d3 = 0.001953125D;
-                double d4 = Math.abs(this.noiseGenBryce2.a(k * d3, l * d3));
+                double d4 = Math.abs(this.noiseGenBryce2.getNoiseOctaves(k * d3, l * d3));
 
                 bryceHeight = bryceNoiseValue * bryceNoiseValue * 2.5D;
                 double d5 = Math.ceil(d4 * 50.0D) + 14.0D;

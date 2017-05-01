@@ -10,7 +10,7 @@ import com.khorn.terraincontrol.configuration.WorldConfig;
 import com.khorn.terraincontrol.customobjects.CustomObject;
 import com.khorn.terraincontrol.customobjects.bo3.BO3;
 import com.khorn.terraincontrol.customobjects.bo3.BO3Settings.SpawnHeightEnum;
-import com.khorn.terraincontrol.generator.noise.NoiseGeneratorNewOctaves;
+import com.khorn.terraincontrol.generator.noise.NoiseGeneratorSimplexOctaves;
 import com.khorn.terraincontrol.generator.resource.Resource;
 import com.khorn.terraincontrol.logging.LogMarker;
 import com.khorn.terraincontrol.util.ChunkCoordinate;
@@ -30,7 +30,7 @@ public class ObjectSpawner
         this.configProvider = configProvider;
         this.rand = new Random();
         this.world = localWorld;
-        new NoiseGeneratorNewOctaves(new Random(world.getSeed()), 4);
+        new NoiseGeneratorSimplexOctaves(new Random(world.getSeed()), 4);
     }
 
     public boolean processing = false;   

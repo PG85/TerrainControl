@@ -6,7 +6,7 @@ import com.khorn.terraincontrol.TerrainControl;
 import com.khorn.terraincontrol.configuration.BiomeConfig;
 import com.khorn.terraincontrol.configuration.ConfigFunction;
 import com.khorn.terraincontrol.exception.InvalidConfigException;
-import com.khorn.terraincontrol.generator.noise.NoiseGeneratorOldOctaves;
+import com.khorn.terraincontrol.generator.noise.NoiseGeneratorSimplexOctaves;
 import com.khorn.terraincontrol.util.ChunkCoordinate;
 import com.khorn.terraincontrol.util.MaterialSet;
 
@@ -21,7 +21,7 @@ public class SurfacePatchGen extends Resource
     /**
      * To get nice patches, we need our own noise generator here
      */
-    private final NoiseGeneratorOldOctaves noiseGen;
+    private final NoiseGeneratorSimplexOctaves noiseGen;
     private final Random random;
     private final MaterialSet sourceBlocks;
 
@@ -36,7 +36,7 @@ public class SurfacePatchGen extends Resource
         maxAltitude = readInt(args.get(3), minAltitude, TerrainControl.WORLD_HEIGHT);
         sourceBlocks = readMaterials(args, 4);
         random = new Random(2345L);
-        noiseGen = new NoiseGeneratorOldOctaves(random, 1);
+        noiseGen = new NoiseGeneratorSimplexOctaves(random, 1);
     }
 
     @Override
@@ -118,7 +118,7 @@ public class SurfacePatchGen extends Resource
         if (y < minAltitude || y > maxAltitude)
             return;
 
-        double yNoise = noiseGen.getYNoise(x * 0.25D, z * 0.25D);
+        double yNoise = noiseGen.getNoiseOctaves(x * 0.25D, z * 0.25D);
         if (yNoise > 0.0D)
         {
             LocalMaterialData materialAtLocation = world.getMaterial(x, y, z);
