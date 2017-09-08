@@ -217,18 +217,35 @@ public final class BiomeGroup extends ConfigFunction<WorldConfig>
         return false;
     }
 
+    /**
+     * Updated to consider total rarity of all biomes in group, not just biome rarity per size.  This allows each
+     * depth to have a chance of spawning nothing, which is analogous to the functionality of the lookup table used
+     * in BeforeGroups method.  Without this, there is a 100% chance of spawning something in every space on a
+     * layer, leaving no space to spawn biomes of different sizes in same group on higher resolution layers.
+     */
     public SortedMap<Integer, LocalBiome> getDepthMap(int depth)
     {
         int cumulativeBiomeRarity = 0;
+        int cumulativeBiomeRarityForDepth = 0;
+
         TreeMap<Integer, LocalBiome> map = new TreeMap<Integer, LocalBiome>();
         for (Entry<String, LocalBiome> biome : this.biomes.entrySet())
-        {                                                           //>>	When depth given is negative, include all biomes in group
+        {
+            cumulativeBiomeRarity += biome.getValue().getBiomeConfig().biomeRarity;
+
+            //>> When depth given is negative, include all biomes in group
             if (biome.getValue().getBiomeConfig().biomeSize == depth || depth < 0)
             {
-                cumulativeBiomeRarity += biome.getValue().getBiomeConfig().biomeRarity;
-                map.put(cumulativeBiomeRarity, biome.getValue());
+                cumulativeBiomeRarityForDepth += cumulativeBiomeRarity;
+                map.put(cumulativeBiomeRarityForDepth, biome.getValue());
             }
         }
+
+        if(cumulativeBiomeRarityForDepth < cumulativeBiomeRarity)
+        {
+            map.put(cumulativeBiomeRarity, null);
+        }
+
         return map;
     }
 
