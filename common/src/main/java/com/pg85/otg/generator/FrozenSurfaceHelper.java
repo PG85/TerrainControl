@@ -211,7 +211,7 @@ public class FrozenSurfaceHelper
      */
     private void propagationHelper(int x, int y, int z)
     {
-        if (world.getHighestBlockYAt(x, z)-1 > y && this.currentPropagationSize < this.maxPropagationSize)
+        if (world.getHighestBlockYAt(x, z)-1 > y && this.currentPropagationSize++ < this.maxPropagationSize)
         {
             this.freezeLiquid(x, y, z);
         }
