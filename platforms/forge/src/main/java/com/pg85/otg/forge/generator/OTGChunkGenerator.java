@@ -630,7 +630,7 @@ public class OTGChunkGenerator implements IChunkGenerator
     {
     	for(int i = OTG.WORLD_HEIGHT - 1; i > OTG.WORLD_DEPTH; i--)
     	{
-    		if(!chunkBuffer.getBlock(x, i, z).isAir())
+    		if(chunkBuffer.getBlock(x, i, z) != null && !chunkBuffer.getBlock(x, i, z).isAir())
 			{
     			return i;
 			};
