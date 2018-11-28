@@ -800,6 +800,7 @@ public class ServerEventListener
     public void tryTeleportPlayer(EntityPlayer player)
 	{
 		ForgeWorld playerWorld = (ForgeWorld)((ForgeEngine)OTG.getEngine()).getWorld(player.world);
+		if(playerWorld == null || playerWorld.getConfigs() == null) return;
 		WorldConfig worldConfig = playerWorld.getConfigs().getWorldConfig();
 
 		// DimensionBelow
