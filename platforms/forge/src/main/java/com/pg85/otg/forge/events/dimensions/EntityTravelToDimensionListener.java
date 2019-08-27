@@ -26,16 +26,9 @@ public class EntityTravelToDimensionListener
 	@SubscribeEvent
 	public void entityTravelToDimension(EntityTravelToDimensionEvent e)
 	{
-		if(e.getDimension() == -1)
+		// Make sure the player is above a portal block so we can check if this is a Quartz portal
+		if(e.getDimension() == -1 && ForgeMaterialData.ofMinecraftBlockState(e.getEntity().getEntityWorld().getBlockState(e.getEntity().getPosition())).toDefaultMaterial().equals(DefaultMaterial.PORTAL))
 		{
-			// Make sure the player is above a portal block so we can check if this is a Quartz portal
-			if(!ForgeMaterialData.ofMinecraftBlockState(e.getEntity().getEntityWorld().getBlockState(e.getEntity().getPosition())).toDefaultMaterial().equals(DefaultMaterial.PORTAL))
-			{
-				e.getEntity().timeUntilPortal = 0;
-				e.setCanceled(true);
-				return;
-			}
-
 			Entity sender = e.getEntity();
 			BlockPos playerPos = new BlockPos(sender.getPosition());
 			World world = sender.getEntityWorld();
