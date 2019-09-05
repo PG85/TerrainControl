@@ -1,11 +1,11 @@
 package com.pg85.otg.bukkit.commands;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.bukkit.OTGPerm;
 import com.pg85.otg.bukkit.OTGPlugin;
+import com.pg85.otg.common.BiomeIds;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.exception.BiomeNotFoundException;
-import com.pg85.otg.util.BiomeIds;
 
 import org.bukkit.Location;
 import org.bukkit.command.CommandSender;
@@ -14,13 +14,12 @@ import java.util.List;
 
 public class BiomeCommand extends BaseCommand
 {
-    public BiomeCommand(OTGPlugin _plugin)
+    BiomeCommand(OTGPlugin _plugin)
     {
         super(_plugin);
         name = "biome";
         perm = OTGPerm.CMD_BIOME.node;
         usage = "biome [-f] [-s]";
-        workOnConsole = false;
     }
 
     @Override
@@ -55,11 +54,10 @@ public class BiomeCommand extends BaseCommand
         {
             try
             {
-                LocalBiome savedBiome = world.getSavedBiome(x, z);
-                BiomeIds savedIds = savedBiome.getIds();
+                String savedBiomeName = world.getSavedBiomeName(x, z);
                 sender.sendMessage(MESSAGE_COLOR + "According to the world save files, you are in the " + VALUE_COLOR
-                        + savedBiome.getName() + MESSAGE_COLOR + " biome, with id " + VALUE_COLOR
-                        + savedIds.getSavedId());
+                        + savedBiomeName + MESSAGE_COLOR + " biome, with id " + VALUE_COLOR
+                        + biomeIds.getSavedId());
             } catch (BiomeNotFoundException e)
             {
                 sender.sendMessage(ERROR_COLOR + "An unknown biome (" + e.getBiomeName() + ") was saved to the save files here.");

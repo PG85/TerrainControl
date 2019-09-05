@@ -4,12 +4,12 @@ import com.pg85.otg.OTG;
 import com.pg85.otg.bukkit.util.EnumHelper;
 import com.pg85.otg.bukkit.util.MobSpawnGroupHelper;
 import com.pg85.otg.bukkit.util.WorldHelper;
+import com.pg85.otg.common.BiomeIds;
 import com.pg85.otg.configuration.biome.BiomeConfig;
-import com.pg85.otg.configuration.biome.WeightedMobSpawnGroup;
+import com.pg85.otg.configuration.biome.settings.WeightedMobSpawnGroup;
 import com.pg85.otg.configuration.standard.PluginStandardValues;
 import com.pg85.otg.configuration.standard.WorldStandardValues;
 import com.pg85.otg.logging.LogMarker;
-import com.pg85.otg.util.BiomeIds;
 import com.pg85.otg.util.helpers.StringHelper;
 import net.minecraft.server.v1_12_R1.BiomeBase;
 import net.minecraft.server.v1_12_R1.MinecraftKey;
@@ -19,8 +19,9 @@ import java.util.List;
 
 public class OTGBiomeBase extends BiomeBase
 {
-    private static final int MAX_TC_BIOME_ID = 1023;
-    public final int generationId;
+    private static final int MAX_OTG_BIOME_ID = 4095;
+    public int otgBiomeId;
+    private int savedId;
 
     /**
      * Mojang made the methods on BiomeBase.a protected (so only accessable for
@@ -60,105 +61,10 @@ public class OTGBiomeBase extends BiomeBase
             }
         }
     }
-
-    /**
-     * Creates a CustomBiome instance. Minecraft automatically registers those
-     * instances in the BiomeBase constructor. We don't want this for virtual
-     * biomes (the shouldn't overwrite real biomes), so we restore the old
-     * biome, unregistering the virtual biome.
-     *
-     * @param biomeConfig Settings of the biome
-     * @param biomeIds    Ids of the biome.
-     * @return The CustomBiome instance.
-     */
-    public static OTGBiomeBase createInstance(BiomeConfig biomeConfig, BiomeIds biomeIds)
-    {
-        OTGBiomeBase customBiome = new OTGBiomeBase(biomeConfig, biomeIds);
-
-        // Insert the biome in Minecraft's biome mapping
-        String biomeNameWithoutSpaces = StringHelper.toComputerFriendlyName(biomeConfig.getName());
-        MinecraftKey biomeKey = new MinecraftKey(PluginStandardValues.PLUGIN_NAME, biomeNameWithoutSpaces);
-        int savedBiomeId = biomeIds.getSavedId();
-
-        // We need to init array size because Mojang uses a strange custom
-        // ArrayList. RegistryID arrays are not correctly (but randomly!) copied
-        // when resized.
-        if(BiomeBase.getBiome(MAX_TC_BIOME_ID) == null) {
-            BiomeBase.REGISTRY_ID.a(MAX_TC_BIOME_ID,
-                    new MinecraftKey(PluginStandardValues.PLUGIN_NAME, "null"),
-                    new OTGBiomeBase(biomeConfig, new BiomeIds(MAX_TC_BIOME_ID, MAX_TC_BIOME_ID)));
-        }
-
-        if (biomeIds.isVirtual())
-        {
-            // Virtual biomes hack: register, then let original biome overwrite
-            // In this way, the id --> biome mapping returns the original biome,
-            // and the biome --> id mapping returns savedBiomeId for both the
-            // original and custom biome
-            BiomeBase existingBiome = BiomeBase.getBiome(savedBiomeId);
-
-            if (existingBiome == null)
-            {
-                // Original biome not yet registered. This is because it's a
-                // custom biome that is loaded after this virtual biome, so it
-                // will soon be registered
-                BiomeBase.REGISTRY_ID.a(savedBiomeId, biomeKey, customBiome);
-                OTG.log(LogMarker.TRACE, ",{},{},{}", biomeConfig.getName(), savedBiomeId, biomeIds.getOTGBiomeId());
-            } else
-            {
-                MinecraftKey existingBiomeKey = BiomeBase.REGISTRY_ID.b(existingBiome);
-                BiomeBase.REGISTRY_ID.a(savedBiomeId, biomeKey, customBiome);
-                BiomeBase.REGISTRY_ID.a(savedBiomeId, existingBiomeKey, existingBiome);
-
-                // String existingBiomeName = existingBiome.getClass().getSimpleName();
-                // if(existingBiome instanceof CustomBiome) {
-                //     existingBiomeName = String.valueOf(((CustomBiome) existingBiome).generationId);
-                // }
-                OTG.log(LogMarker.TRACE, ",{},{},{}", biomeConfig.getName(), savedBiomeId, biomeIds.getOTGBiomeId() /*, existingBiomeName*/ );
-            }
-        } else
-        {
-            // Normal insertion
-            BiomeBase.REGISTRY_ID.a(savedBiomeId, biomeKey, customBiome);
-
-            OTG.log(LogMarker.TRACE, ",{},{},{}", biomeConfig.getName(), savedBiomeId, biomeIds.getOTGBiomeId());
-        }
-
-        // Add biome to Bukkit enum if it's not there yet
-        try {
-            Biome.valueOf(biomeNameWithoutSpaces.toUpperCase());
-        } catch (IllegalArgumentException e) {
-            EnumHelper.addEnum(Biome.class, biomeNameWithoutSpaces.toUpperCase(), new Class[0], new Object[0]);
-        }
-
-        // Sanity check: check if biome was actually registered
-        int registeredSavedId = WorldHelper.getSavedId(customBiome);
-        if (registeredSavedId != savedBiomeId)
-        {
-            throw new AssertionError("Biome " + biomeConfig.getName() + " is not properly registered: got id " + registeredSavedId + ", should be " + savedBiomeId);
-        }
-
-        checkRegistry();
-
-        return customBiome;
-    }
-
-    /**
-     * Check if biome ID registry is well filled.
-     */
-    private static void checkRegistry() {
-        for(int i = 168; i >= 0; --i) {
-            BiomeBase biome = getBiome(i);
-            if(biome != null && biome instanceof OTGBiomeBase && ((OTGBiomeBase) biome).generationId != i) {
-                throw new AssertionError("Biome ID #" + i + " returns custom biome #" + ((OTGBiomeBase) biome).generationId + " instead of its own.");
-            }
-        }
-    }
-
-    private OTGBiomeBase(BiomeConfig biomeConfig, BiomeIds biomeIds)
+    
+    private OTGBiomeBase(BiomeConfig biomeConfig)
     {
         super(new BiomeBase_a(biomeConfig.getName(), biomeConfig));
-        this.generationId = biomeIds.getOTGBiomeId();
 
         // Sanity check
         if (this.getHumidity() != biomeConfig.biomeWetness)
@@ -177,9 +83,126 @@ public class OTGBiomeBase extends BiomeBase
     }
 
     // Adds the mobs to the internal list.
-    protected void addMobs(List<BiomeMeta> internalList, List<WeightedMobSpawnGroup> configList)
+    private void addMobs(List<BiomeMeta> internalList, List<WeightedMobSpawnGroup> configList)
     {
         internalList.clear();
         internalList.addAll(MobSpawnGroupHelper.toMinecraftlist(configList));
+    }
+    
+    static OTGBiomeBase createInstance(BiomeConfig biomeConfig, BiomeIds biomeIds, String worldName, boolean isReload)
+    {
+        // We need to init array size because Mojang uses a strange custom
+        // ArrayList. RegistryID arrays are not correctly (but randomly!) copied
+        // when resized.
+        if(BiomeBase.getBiome(MAX_OTG_BIOME_ID) == null)
+        {
+            BiomeBase.REGISTRY_ID.a(
+        		MAX_OTG_BIOME_ID,
+	            new MinecraftKey(PluginStandardValues.PLUGIN_NAME, "null"),
+	            new OTGBiomeBase(biomeConfig)
+            );
+        }
+    	
+        String biomeNameWithoutSpaces = worldName.toLowerCase() + "_" + StringHelper.toComputerFriendlyName(biomeConfig.getName());
+        MinecraftKey biomeKey = new MinecraftKey(PluginStandardValues.MOD_ID, biomeNameWithoutSpaces);
+          
+        OTGBiomeBase customBiome = new OTGBiomeBase(biomeConfig);
+
+        if(biomeConfig.replaceToBiomeName != null && biomeConfig.replaceToBiomeName.length() > 0) // This biome uses ReplaceToBiomeName and should use the ReplaceToBiomeName biome's id.
+        {
+        	customBiome.otgBiomeId = biomeIds.getOTGBiomeId();
+        	customBiome.savedId = biomeIds.getSavedId();
+        	
+            // Virtual biomes hack: register, then let original biome overwrite
+            // In this way, the id --> biome mapping returns the original biome,
+            // and the biome --> id mapping returns savedBiomeId for both the
+            // original and custom biome
+            BiomeBase existingBiome = BiomeBase.getBiome(customBiome.savedId);
+
+            BiomeBase.REGISTRY_ID.a(customBiome.savedId, biomeKey, customBiome);
+            
+            if (existingBiome != null)
+            {
+                MinecraftKey existingBiomeKey = BiomeBase.REGISTRY_ID.b(existingBiome);
+                BiomeBase.REGISTRY_ID.a(customBiome.savedId, existingBiomeKey, existingBiome);
+
+                // String existingBiomeName = existingBiome.getClass().getSimpleName();
+                // if(existingBiome instanceof CustomBiome) {
+                //     existingBiomeName = String.valueOf(((CustomBiome) existingBiome).generationId);
+                // }
+            }
+        }
+        else if(biomeIds.getSavedId() > -1) 
+        {
+        	// This is a biome for an existing world, make sure it uses the same biome id as before.         
+        	BiomeBase biomeAtId = BiomeBase.REGISTRY_ID.getId(biomeIds.getSavedId());
+            if(biomeAtId != null && !isReload)
+            {
+            	throw new RuntimeException("Tried to register biome " + biomeKey.toString() + " to a id " + biomeIds.getSavedId() + " but it is occupied by biome: " + biomeAtId.toString() + ". This can happen when using the CustomBiomes setting in the world config or when changing mod/biome configurations for previously created worlds. OTG 1.12.2 v7 and above use dynamic biome id's for new worlds, this avoids the problem completely.");
+            }
+            
+        	customBiome.otgBiomeId = biomeIds.getOTGBiomeId();
+        	customBiome.savedId = biomeIds.getSavedId(); 
+        	
+            // Normal insertion       	
+            BiomeBase.REGISTRY_ID.a(customBiome.savedId, biomeKey, customBiome);
+        	
+        } else {
+
+            // Normal insertion, get next free id and register id+resourcelocation
+
+        	int newId = 0;
+        	while(BiomeBase.REGISTRY_ID.getId(newId) != null)
+        	{
+        		if(newId == MAX_OTG_BIOME_ID)
+        		{
+        			throw new RuntimeException("Biome could not be registered, no free biome id's!");
+        		}
+        		newId++;
+        	}
+        	biomeIds.setSavedId(newId);
+        	customBiome.otgBiomeId = biomeIds.getOTGBiomeId();
+        	customBiome.savedId = newId; 
+        	
+            // Normal insertion       	
+            BiomeBase.REGISTRY_ID.a(customBiome.savedId, biomeKey, customBiome);
+        }
+        
+    	OTG.log(LogMarker.DEBUG, "{}, {}, {}, {}", biomeConfig.getName(), biomeIds.getSavedId(), biomeIds.getOTGBiomeId(), biomeKey.toString());
+
+        // Add biome to Bukkit enum if it's not there yet
+        try {
+            Biome.valueOf(biomeNameWithoutSpaces.toUpperCase());
+        }
+        catch (IllegalArgumentException e)
+        {
+            EnumHelper.addEnum(Biome.class, biomeNameWithoutSpaces.toUpperCase(), new Class[0], new Object[0]);
+        }
+
+        // Sanity check: check if biome was actually registered
+        int registeredSavedId = WorldHelper.getSavedId(customBiome);
+        if (registeredSavedId != customBiome.savedId)
+        {
+            throw new AssertionError("Biome " + biomeConfig.getName() + " is not properly registered: got id " + registeredSavedId + ", should be " + customBiome.savedId);
+        }
+
+        checkRegistry();
+
+        return customBiome;    
+    }
+    
+    /**
+     * Check if biome ID registry is well filled.
+     */
+    private static void checkRegistry()
+    {
+        for(int i = 0; i < 256; i++)
+    	{
+            BiomeBase biome = getBiome(i);
+            if(biome != null && biome instanceof OTGBiomeBase && ((OTGBiomeBase) biome).savedId != i)
+            {
+                throw new AssertionError("Biome ID #" + i + " returns custom biome #" + ((OTGBiomeBase) biome).savedId + " instead of its own.");
+            }
+        }
     }
 }

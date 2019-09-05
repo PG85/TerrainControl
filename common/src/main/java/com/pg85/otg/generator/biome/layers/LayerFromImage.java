@@ -1,7 +1,7 @@
 package com.pg85.otg.generator.biome.layers;
 
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.world.WorldConfig;
 import com.pg85.otg.generator.biome.ArraysCache;
 import com.pg85.otg.logging.LogMarker;
@@ -23,9 +23,9 @@ public class LayerFromImage extends Layer
     private int zOffset;
     private WorldConfig.ImageMode imageMode;
 
-    public LayerFromImage(long seed, Layer childLayer, WorldConfig config, LocalWorld world)
+    LayerFromImage(long seed, int defaultOceanId, Layer childLayer, WorldConfig config, LocalWorld world)
     {
-        super(seed);
+        super(seed, defaultOceanId);
         this.child = childLayer;
         xOffset = config.imageXOffset;
         zOffset = config.imageZOffset;
@@ -92,7 +92,8 @@ public class LayerFromImage extends Layer
                 else
                     this.biomeMap[nColor] = fillBiome;
             }
-        } catch (IOException ioexception)
+        }
+        catch (IOException ioexception)
         {
             OTG.log(LogMarker.FATAL, ioexception.getStackTrace().toString());
         }

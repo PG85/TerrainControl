@@ -1,14 +1,14 @@
 package com.pg85.otg.generator.biome.layers;
 
-import com.pg85.otg.LocalWorld;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.generator.biome.ArraysCache;
 
 public class LayerSmooth extends Layer
 {
 
-    public LayerSmooth(long seed, Layer childLayer)
+    LayerSmooth(long seed, int defaultOceanId, Layer childLayer)
     {
-        super(seed);
+        super(seed, defaultOceanId);
         this.child = childLayer;
     }
 
@@ -23,31 +23,41 @@ public class LayerSmooth extends Layer
         int[] childInts = this.child.getInts(world, cache, x0, z0, xSize0, zSize0);
         int[] thisInts = cache.getArray(xSize * zSize);
 
+        int northCheck;
+        int southCheck;
+        int eastCheck;
+        int westCheck;
+        int centerCheck;
         for (int zi = 0; zi < zSize; ++zi)
         {
             for (int xi = 0; xi < xSize; ++xi)
             {
-                int northCheck = childInts[xi + 1 + (zi + 0) * xSize0];
-                int southCheck = childInts[xi + 1 + (zi + 2) * xSize0];
-                int eastCheck = childInts[xi + 2 + (zi + 1) * xSize0];
-                int westCheck = childInts[xi + 0 + (zi + 1) * xSize0];
-                int centerCheck = childInts[xi + 1 + (zi + 1) * xSize0];
+                northCheck = childInts[xi + 1 + (zi + 0) * xSize0];
+                southCheck = childInts[xi + 1 + (zi + 2) * xSize0];
+                eastCheck = childInts[xi + 2 + (zi + 1) * xSize0];
+                westCheck = childInts[xi + 0 + (zi + 1) * xSize0];
+                centerCheck = childInts[xi + 1 + (zi + 1) * xSize0];
 
                 if (westCheck == eastCheck && northCheck == southCheck)
                 {
                     this.initChunkSeed((long) (xi + x), (long) (zi + z));
 
                     if (this.nextInt(2) == 0)
+                    {
                         centerCheck = westCheck;
-                    else
+                    } else {
                         centerCheck = northCheck;
-                } else
-                {
+                    }
+                } else {
                     if (westCheck == eastCheck)
-                        centerCheck = westCheck;
+                    {
+                       centerCheck = westCheck;
+                    }
 
                     if (northCheck == southCheck)
+                    {
                         centerCheck = northCheck;
+                    }
                 }
 
                 thisInts[xi + zi * xSize] = centerCheck;
@@ -56,5 +66,4 @@ public class LayerSmooth extends Layer
 
         return thisInts;
     }
-
 }

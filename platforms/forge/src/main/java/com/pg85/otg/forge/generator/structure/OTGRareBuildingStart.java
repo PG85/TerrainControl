@@ -1,7 +1,7 @@
 package com.pg85.otg.forge.generator.structure;
 
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.forge.ForgeEngine;
 
@@ -14,7 +14,13 @@ import java.util.Random;
 
 public class OTGRareBuildingStart extends StructureStart
 {
-    public OTGRareBuildingStart(World world, Random random, int chunkX, int chunkZ)
+    // Required by Minecraft's structure loading code
+    public OTGRareBuildingStart()
+    {
+    	super();
+    }
+	
+    OTGRareBuildingStart(World world, Random random, int chunkX, int chunkZ)
     {
         LocalWorld localWorld = ((ForgeEngine)OTG.getEngine()).getWorld(world);
         if(localWorld == null)
@@ -52,10 +58,5 @@ public class OTGRareBuildingStart extends StructureStart
         }
 
         this.updateBoundingBox();
-    }
-
-    public OTGRareBuildingStart()
-    {
-        // Required by Minecraft's structure loading code
     }
 }

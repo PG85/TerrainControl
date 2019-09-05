@@ -1,8 +1,8 @@
 package com.pg85.otg.bukkit.events;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.bukkit.util.WorldHelper;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.exception.BiomeNotFoundException;
 import com.pg85.otg.generator.resource.SaplingGen;
@@ -28,20 +28,37 @@ class SaplingListener
 
         Location location = event.getLocation();
 
+        // Query the OTG biome, if no sapling of the specified type is found 
+        // and the biome has a replaceToBiome, query the parent biome.
+        
         LocalBiome biome;
         try
         {
-            biome = world.getSavedBiome(location.getBlockX(), location.getBlockZ());
-        } catch (BiomeNotFoundException e)
+        	// Get the biome by OTG id
+            biome = world.getBiome(location.getBlockX(), location.getBlockZ());
+        }
+        catch (BiomeNotFoundException e)
         {
             return;
         }
 
         BiomeConfig biomeConfig = biome.getBiomeConfig();
-
+        
         // Get sapling type
         SaplingType saplingType = toSaplingType(event.getSpecies());
-        if (saplingType == null)
+        
+        if (saplingType == null && biomeConfig.inheritSaplingResource && biomeConfig.replaceToBiomeName != null && biomeConfig.replaceToBiomeName.trim().length() > 0)
+        {
+        	biome = world.getBiomeByNameOrNull(biomeConfig.replaceToBiomeName);
+        	if(biome == null)
+        	{
+        		return;
+        	}
+            biomeConfig = biome.getBiomeConfig();
+            saplingType = toSaplingType(event.getSpecies());
+        }
+                  
+        if(saplingType == null)
         {
             return;
         }
@@ -56,6 +73,11 @@ class SaplingListener
                 return;
             }
             location = lowestXZ;
+        }
+
+        // Optimistically remove the saplings.
+        for (BlockState b : event.getBlocks()) {
+            b.getBlock().setType(Material.AIR);
         }
 
         // Get generator
@@ -84,8 +106,11 @@ class SaplingListener
             event.getBlocks().clear();
         } else
         {
-            // Cannot grow, so leave the sapling there
+            // Cannot grow, so restore the saplings.
             event.setCancelled(true);
+            for (BlockState b : event.getBlocks()) {
+                b.update(true, false);
+            }
         }
     }
 

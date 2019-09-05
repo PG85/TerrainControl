@@ -3,7 +3,7 @@ package com.pg85.otg.forge.network.server;
 import java.io.IOException;
 import java.util.ArrayList;
 
-import com.pg85.otg.customobjects.bo3.ParticleFunction;
+import com.pg85.otg.customobjects.bofunctions.ParticleFunction;
 import com.pg85.otg.forge.network.PacketDispatcher;
 import com.pg85.otg.forge.network.server.packets.DimensionLoadUnloadPacket;
 import com.pg85.otg.forge.network.server.packets.DimensionSyncPacket;
@@ -22,7 +22,7 @@ public class ServerPacketManager
 	// Server to client
 	
     // Used when creating / deleting dimensions
-    public static void SendDimensionSynchPacketToAllPlayers(MinecraftServer server)
+    public static void sendDimensionSynchPacketToAllPlayers(MinecraftServer server)
     {
         ByteBuf nettyBuffer = Unpooled.buffer();
         ByteBufOutputStream stream = new ByteBufOutputStream(nettyBuffer);
@@ -46,12 +46,12 @@ public class ServerPacketManager
 		{
 	    	for(EntityPlayerMP player : server.getPlayerList().getPlayers())
 	    	{
-	        	PacketDispatcher.sendTo(new DimensionSyncPacket(nettyBuffer), (EntityPlayerMP) player);
+	        	PacketDispatcher.sendTo(new DimensionSyncPacket(nettyBuffer.copy()), (EntityPlayerMP) player);
 	    	}
 		}
     }
 
-    public static void SendPacketsOnConnect(ServerConnectionFromClientEvent event)
+    public static void sendPacketsOnConnect(ServerConnectionFromClientEvent event)
 	{
         ByteBuf nettyBuffer = Unpooled.buffer();
         ByteBufOutputStream stream = new ByteBufOutputStream(nettyBuffer);
@@ -74,19 +74,19 @@ public class ServerPacketManager
 		if(nettyBuffer != null)
 		{
 			PacketDispatcher.sendTo(new DimensionSyncPacket(nettyBuffer), event.getManager());
-	    	// Reset particles in case the player just switched worlds.
-	    	PacketDispatcher.sendTo(ParticlesPacket.CreateEmptyPacket(), event.getManager());
+	    	// Reset particles in case the player just switched worlds. This also happens when players log on.
+	    	PacketDispatcher.sendTo(ParticlesPacket.createEmptyPacket(), event.getManager());
 		}
 	}	
 	
-	public static void SendParticlesPacket(ArrayList<ParticleFunction> particleDataForOTGPerPlayer, EntityPlayerMP player)
+	public static void sendParticlesPacket(ArrayList<ParticleFunction<?>> particleDataForOTGPerPlayer, EntityPlayerMP player)
 	{
         ByteBuf nettyBuffer = Unpooled.buffer();
         ByteBufOutputStream stream = new ByteBufOutputStream(nettyBuffer);
 
         try
         {
-        	ParticlesPacket.WriteToStream(particleDataForOTGPerPlayer, stream);
+        	ParticlesPacket.writeToStream(particleDataForOTGPerPlayer, stream);
 		}
         catch (IOException e1)
         {
@@ -106,14 +106,14 @@ public class ServerPacketManager
 	}   
 	
 	// Sent to the client to update the UI when a world loads/unloads on the server
-	public static void SendDimensionLoadUnloadPacketToAllPlayers(boolean dimensionLoaded, String worldName, MinecraftServer server)
+	public static void sendDimensionLoadUnloadPacketToAllPlayers(boolean dimensionLoaded, String worldName, MinecraftServer server)
 	{
         ByteBuf nettyBuffer = Unpooled.buffer();
         ByteBufOutputStream stream = new ByteBufOutputStream(nettyBuffer);
 
         try
         {        	
-        	DimensionLoadUnloadPacket.WriteToStream(dimensionLoaded, worldName, stream);
+        	DimensionLoadUnloadPacket.writeToStream(dimensionLoaded, worldName, stream);
 		}
         catch (IOException e1)
         {
@@ -130,20 +130,20 @@ public class ServerPacketManager
 		{
 	    	for(EntityPlayerMP player : server.getPlayerList().getPlayers())
 	    	{
-	        	PacketDispatcher.sendTo(new DimensionLoadUnloadPacket(nettyBuffer), (EntityPlayerMP) player);
+	        	PacketDispatcher.sendTo(new DimensionLoadUnloadPacket(nettyBuffer.copy()), (EntityPlayerMP) player);
 	    	}
 		}
 	} 
 	
 	// Sent to the client to update the pregenerator UI
-	public static void SendPregeneratorStatusPacketToAllPlayers(MinecraftServer server)
+	public static void sendPregeneratorStatusPacketToAllPlayers(MinecraftServer server)
 	{
         ByteBuf nettyBuffer = Unpooled.buffer();
         ByteBufOutputStream stream = new ByteBufOutputStream(nettyBuffer);
 
         try
         {        	
-        	PregeneratorStatusPacket.WriteToStream(stream);
+        	PregeneratorStatusPacket.writeToStream(stream);
 		}
         catch (IOException e1)
         {
@@ -160,7 +160,7 @@ public class ServerPacketManager
 		{
 	    	for(EntityPlayerMP player : server.getPlayerList().getPlayers())
 	    	{
-	        	PacketDispatcher.sendTo(new PregeneratorStatusPacket(nettyBuffer), (EntityPlayerMP) player);
+    			PacketDispatcher.sendTo(new PregeneratorStatusPacket(nettyBuffer.copy()), (EntityPlayerMP) player);
 	    	}
 		}
 	}

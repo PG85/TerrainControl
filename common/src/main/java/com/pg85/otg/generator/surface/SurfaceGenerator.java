@@ -1,10 +1,10 @@
 package com.pg85.otg.generator.surface;
 
-import com.pg85.otg.LocalWorld;
+import com.pg85.otg.common.LocalMaterialData;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.generator.ChunkBuffer;
 import com.pg85.otg.generator.GeneratingChunk;
-import com.pg85.otg.util.LocalMaterialData;
 
 /**
  * Minecraft 1.7 added block data support to the initial terrain generation.
@@ -28,7 +28,7 @@ public interface SurfaceGenerator
      * @param xInWorld        X position in the world.
      * @param zInWorld        Z position in the world.
      */
-    void spawn(GeneratingChunk generatingChunk, ChunkBuffer chunkBuffer, BiomeConfig biomeConfig, int xInWorld, int zInWorld);
+    void spawn(long worldSeed, GeneratingChunk generatingChunk, ChunkBuffer chunkBuffer, BiomeConfig biomeConfig, int xInWorld, int zInWorld);
 
     /**
      * Writes the settings used to a string. There must be a constructor to

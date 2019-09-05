@@ -21,7 +21,7 @@ compileJava {
 }
 
 minecraft {
-    version = "1.12.2-14.23.5.2768"
+    version = "1.12.2-14.23.5.2838"
     runDir = "run"
     
     // the mappings can be changed at any time, and must be in the following format.
@@ -29,7 +29,7 @@ minecraft {
     // stable_#            stables are built at the discretion of the MCP team.
     // Use non-default mappings at your own risk. they may not always work.
     // simply re-run your setup task after changing the mappings to update your workspace.
-    mappings = "snapshot_20171003"
+    mappings = "snapshot_20180814"
     // makeObfSourceJar = false // an Srg named sources jar is made by default. uncomment this to disable.
 }
 
@@ -117,30 +117,4 @@ task rootJar(type: Jar, dependsOn: ['compileJava', asmJar]) {
     // classifier = 'root'
 }
 
-//task signAsmJar(type: SignJar, dependsOn: reobfAsmJar) {
-    //onlyIf { // Skip the task if our secret data isn't available
-        //project.hasProperty('keyStore')
-    //}
-    //keyStore = project.keyStore // This needs to be a path to the keystore file
-    //alias = project.keyStoreAlias
-    //storePass = project.keyStorePass
-    //keyPass = project.keyStoreKeyPass
-    //inputFile = jar.archivePath // TODO: Sign a jar inside a jar? Find a better solution?
-    //outputFile = jar.archivePath // TODO: Sign a jar inside a jar? Find a better solution?
-//}
-
-//task signJar(type: SignJar, dependsOn: reobfJar) {
-    //onlyIf { // Skip the task if our secret data isn't available
-        //project.hasProperty('keyStore')
-    //}
-    //keyStore = project.keyStore // This needs to be a path to the keystore file
-    //alias = project.keyStoreAlias
-    //storePass = project.keyStorePass
-    //keyPass = project.keyStoreKeyPass
-    //inputFile = jar.archivePath
-    //outputFile = jar.archivePath
-//}
-
 build.dependsOn rootJar
-//build.dependsOn signJar
-//build.dependsOn signAsmJar // TODO: Figure out a way to sign the asm jar

@@ -1,10 +1,11 @@
 package com.pg85.otg.generator.resource;
 
-import com.pg85.otg.LocalWorld;
-import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalMaterialData;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
+import com.pg85.otg.configuration.standard.PluginStandardValues;
 import com.pg85.otg.exception.InvalidConfigException;
-import com.pg85.otg.util.MaterialSet;
+import com.pg85.otg.util.materials.MaterialSet;
 
 import java.util.List;
 import java.util.Random;
@@ -23,10 +24,10 @@ public class ReedGen extends Resource
         material = readMaterial(args.get(0));
         frequency = readInt(args.get(1), 1, 100);
         rarity = readRarity(args.get(2));
-        minAltitude = readInt(args.get(3), OTG.WORLD_DEPTH,
-                OTG.WORLD_HEIGHT);
+        minAltitude = readInt(args.get(3), PluginStandardValues.WORLD_DEPTH,
+                PluginStandardValues.WORLD_HEIGHT);
         maxAltitude = readInt(args.get(4), minAltitude,
-                OTG.WORLD_HEIGHT);
+                PluginStandardValues.WORLD_HEIGHT);
         sourceBlocks = readMaterials(args, 5);
     }
 
@@ -75,18 +76,35 @@ public class ReedGen extends Resource
     public void spawn(LocalWorld world, Random rand, boolean villageInChunk, int x, int z)
     {
         int y = world.getHighestBlockYAt(x, z);
-        if (y > maxAltitude || y < minAltitude || (!world.getMaterial(x - 1, y - 1, z, false).isLiquid() && !world.getMaterial(x + 1, y - 1, z, false).isLiquid() && !world.getMaterial(x, y - 1, z - 1, false).isLiquid() && !world.getMaterial(x, y - 1, z + 1, false).isLiquid()))
+        LocalMaterialData materialA = world.getMaterial(x - 1, y - 1, z, false);
+        LocalMaterialData materialB = world.getMaterial(x + 1, y - 1, z, false);
+        LocalMaterialData materialC = world.getMaterial(x, y - 1, z - 1, false);
+        LocalMaterialData materialD = world.getMaterial(x, y - 1, z + 1, false);
+        if (
+    		y > this.maxAltitude || 
+    		y < this.minAltitude || 
+    		(
+				materialA != null && !materialA.isLiquid() &&
+				materialB != null && !materialB.isLiquid() &&
+				materialC != null && !materialC.isLiquid() &&
+				materialD != null && !materialD.isLiquid()
+			)
+		)
         {
             return;
         }
-        if (!sourceBlocks.contains(world.getMaterial(x, y - 1, z, false)))
+        
+        LocalMaterialData worldMaterial = world.getMaterial(x, y - 1, z, false);        
+        if (worldMaterial == null || !this.sourceBlocks.contains(worldMaterial))
         {
             return;
         }
 
         int n = 1 + rand.nextInt(2);
         for (int i1 = 0; i1 < n; i1++)
-            world.setBlock(x, y + i1, z, material, null, false);
+        {
+            world.setBlock(x, y + i1, z, this.material, null, false);
+        }
     }
     
 }

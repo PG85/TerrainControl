@@ -14,8 +14,26 @@ import com.pg85.otg.logging.LogMarker;
  */
 public final class PluginConfig extends ConfigFile
 {
-    public ConfigMode SettingsMode;
+    private LogLevels logLevel = LogLevels.Standard;
+    public String biomeConfigExtension;	
+    public ConfigMode settingsMode;
+    
+	/**
+	 * Shows detailed information about mob and BO3 spawning that is useful for TC world devs.
+	 */
+	public boolean spawnLog = false;    
 
+	/**
+	 * Having developermode enabled means BO3's are reloaded when rejoining an SP world. 
+	 */
+    public boolean developerMode = false;
+    
+	/**
+	 * Forge only: This is the number of chunks the pre-generator generates each server tick.
+	 * Higher values make pre-generation faster but can cause lag and increased memory usage.
+	 */
+	public int pregeneratorMaxChunksPerTick = 1;
+    
     public enum LogLevels
     {
         Off(LogMarker.ERROR),
@@ -36,9 +54,6 @@ public final class PluginConfig extends ConfigFile
         }
 
     }
-
-    private LogLevels LogLevel = LogLevels.Standard;
-    public String biomeConfigExtension;
 
     public PluginConfig(SettingsMap settingsReader)
     {
@@ -72,14 +87,13 @@ public final class PluginConfig extends ConfigFile
     @Override
     protected void readConfigSettings(SettingsMap reader)
     {
-        this.SettingsMode = reader.getSetting(WorldStandardValues.SETTINGS_MODE);
-        this.LogLevel = reader.getSetting(PluginStandardValues.LogLevel);
+        this.settingsMode = reader.getSetting(WorldStandardValues.SETTINGS_MODE);
+        this.logLevel = reader.getSetting(PluginStandardValues.LogLevel);
         this.biomeConfigExtension = reader.getSetting(BiomeStandardValues.BIOME_CONFIG_EXTENSION);
-        this.SpawnLog = reader.getSetting(PluginStandardValues.SPAWN_LOG);
-        this.PregeneratorMaxChunksPerTick = reader.getSetting(PluginStandardValues.PREGENERATOR_MAX_CHUNKS_PER_TICK);
+        this.spawnLog = reader.getSetting(PluginStandardValues.SPAWN_LOG);
+        this.pregeneratorMaxChunksPerTick = reader.getSetting(PluginStandardValues.PREGENERATOR_MAX_CHUNKS_PER_TICK);
         
-        this.ReplaceUnknownBlockWithMaterial = reader.getSetting(PluginStandardValues.REPLACE_UNKNOWN_BLOCK_WITH_MATERIAL);        
-        this.DeveloperMode = reader.getSetting(PluginStandardValues.DEVELOPER_MODE);
+        this.developerMode = reader.getSetting(PluginStandardValues.DEVELOPER_MODE);
     }
 
     @Override
@@ -88,7 +102,7 @@ public final class PluginConfig extends ConfigFile
         // The modes
         writer.bigTitle("The Open Terrain Generator Config File ");
 
-        writer.putSetting(WorldStandardValues.SETTINGS_MODE, this.SettingsMode,
+        writer.putSetting(WorldStandardValues.SETTINGS_MODE, this.settingsMode,
                 "How this config file will be treated.",
                 "Possible Write Modes:",
                 "   WriteAll             - Write config files with help comments",
@@ -100,7 +114,7 @@ public final class PluginConfig extends ConfigFile
         // Custom biomes
         writer.bigTitle("Log Levels");
 
-        writer.putSetting(PluginStandardValues.LogLevel, this.LogLevel,
+        writer.putSetting(PluginStandardValues.LogLevel, this.logLevel,
                 "This is the level with which logs will be produced.",
                 "Possible Log Levels",
                 "   Off         - Bare logging; This will only show FATAL and ERROR logs",
@@ -123,49 +137,23 @@ public final class PluginConfig extends ConfigFile
                 " ",
                 "Defaults to: .bc");         
         
-        writer.putSetting(PluginStandardValues.SPAWN_LOG, this.SpawnLog,
+        writer.putSetting(PluginStandardValues.SPAWN_LOG, this.spawnLog,
 		        "Shows detailed information about BO3 and mob/entity spawning that is useful for OTG world devs. Use higher log levels to see more information (TRACE is the highest).",
 		        "Defaults to: false");
         
         writer.smallTitle("Developer mode");
-        writer.putSetting(PluginStandardValues.DEVELOPER_MODE, this.DeveloperMode,
+        writer.putSetting(PluginStandardValues.DEVELOPER_MODE, this.developerMode,
         		"Clears the BO2/BO3 cache whenever a world or dimension is unloaded (similar to using /otg unloadbo3s and recreating a world).",
         		"Defaults to: false"
 		);         
-
-        writer.putSetting(PluginStandardValues.PREGENERATOR_MAX_CHUNKS_PER_TICK, this.PregeneratorMaxChunksPerTick,
-		        "The number of chunks the pre-generator is allowed to generate for each server tick.",
+       
+        writer.putSetting(PluginStandardValues.PREGENERATOR_MAX_CHUNKS_PER_TICK, this.pregeneratorMaxChunksPerTick,
+		        "The number of chunks the pre-generator is allowed to generate for each server tick, shoul be between 1-5.",
 		        "Higher numbers make pre-generation faster but increase memory usage and will cause lag.");
-                
-        // TODO: Implement this?
-        /*
-        writer.smallTitle("Replace unknown blocks with material:");
-        
-        writer.putSetting(PluginStandardValues.REPLACE_UNKNOWN_BLOCK_WITH_MATERIAL, this.ReplaceUnknownBlockWithMaterial,
-        		"If a block with an unrecognised block name/id tries to spawn it is replaced with this material.",
-        		"Defaults to: LOG"
-		);
-		*/
     }
 
     public LogLevels getLogLevel()
     {
-        return LogLevel;
-    }
-
-    public String ReplaceUnknownBlockWithMaterial = null;
-    
-	/**
-	 * Shows detailed information about mob and BO3 spawning that is useful for TC world devs.
-	 */
-	public boolean SpawnLog = false;    
-
-    public boolean DeveloperMode = false;
-	
-	/**
-	 * Forge only: This is the number of chunks the pre-generator generates each server tick.
-	 * Higher values make pre-generation faster but can cause lag and increased memory usage.
-	 */
-	public int PregeneratorMaxChunksPerTick = 1;
-	
+        return logLevel;
+    }	
 }

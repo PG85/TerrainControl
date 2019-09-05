@@ -1,10 +1,12 @@
 package com.pg85.otg.configuration.biome;
 
-import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalMaterialData;
 import com.pg85.otg.configuration.ConfigFile;
 import com.pg85.otg.configuration.ConfigFunction;
 import com.pg85.otg.configuration.biome.BiomeConfigFinder.BiomeConfigStub;
-import com.pg85.otg.configuration.biome.ReplacedBlocksMatrix.ReplacedBlocksInstruction;
+import com.pg85.otg.configuration.biome.settings.ReplacedBlocksMatrix;
+import com.pg85.otg.configuration.biome.settings.WeightedMobSpawnGroup;
+import com.pg85.otg.configuration.biome.settings.ReplacedBlocksMatrix.ReplacedBlocksInstruction;
 import com.pg85.otg.configuration.io.SettingsMap;
 import com.pg85.otg.configuration.settingType.Setting;
 import com.pg85.otg.configuration.standard.BiomeStandardValues;
@@ -12,16 +14,16 @@ import com.pg85.otg.configuration.standard.PluginStandardValues;
 import com.pg85.otg.configuration.standard.StandardBiomeTemplate;
 import com.pg85.otg.configuration.standard.WorldStandardValues;
 import com.pg85.otg.configuration.world.WorldConfig;
-import com.pg85.otg.customobjects.CustomObject;
 import com.pg85.otg.exception.InvalidConfigException;
 import com.pg85.otg.generator.resource.*;
 import com.pg85.otg.generator.surface.SimpleSurfaceGenerator;
 import com.pg85.otg.generator.surface.SurfaceGenerator;
 import com.pg85.otg.generator.terrain.TerrainShapeBase;
-import com.pg85.otg.util.LocalMaterialData;
+import com.pg85.otg.util.helpers.MaterialHelper;
+import com.pg85.otg.util.helpers.StreamHelper;
 import com.pg85.otg.util.helpers.StringHelper;
-import com.pg85.otg.util.minecraftTypes.DefaultMaterial;
-import com.pg85.otg.util.minecraftTypes.TreeType;
+import com.pg85.otg.util.minecraft.defaults.BiomeRegistryNames;
+import com.pg85.otg.util.minecraft.defaults.DefaultMaterial;
 
 import java.io.DataOutput;
 import java.io.IOException;
@@ -29,6 +31,9 @@ import java.util.*;
 
 public class BiomeConfig extends ConfigFile
 {
+    private StandardBiomeTemplate defaultSettings;
+    public WorldConfig worldConfig;
+	
     public String biomeExtends;
     private boolean doResourceInheritance = true;
 
@@ -90,12 +95,13 @@ public class BiomeConfig extends ConfigFile
     public boolean foliageColorIsMultiplier;
 
     public List<ConfigFunction<BiomeConfig>> resourceSequence = new ArrayList<ConfigFunction<BiomeConfig>>();
-
+    private List<CustomStructureGen> customStructures = new ArrayList<CustomStructureGen>(); // Used as a cache for fast querying, not saved
+    
+    public boolean inheritSaplingResource;
     private Map<SaplingType, SaplingGen> saplingGrowers = new EnumMap<SaplingType, SaplingGen>(SaplingType.class);
 
-    public ArrayList<CustomObject> biomeObjects;
     public CustomStructureGen structureGen;
-    public ArrayList<String> biomeObjectStrings;
+    private ArrayList<String> biomeObjectStrings;
 
     public double maxAverageHeight;
     public double maxAverageDepth;
@@ -122,8 +128,7 @@ public class BiomeConfig extends ConfigFile
 
 	// Mob spawning and mob inheritance (also used to inherit modded mobs from vanilla biomes for Forge))
 
-	public String inheritMobsBiomeName;
-	public boolean inheritMobsBiomeNameProcessed = false;
+	private String inheritMobsBiomeName;
 
     // Spawn Config
     public List<WeightedMobSpawnGroup> spawnMonsters = new ArrayList<WeightedMobSpawnGroup>();
@@ -135,7 +140,7 @@ public class BiomeConfig extends ConfigFile
     public List<WeightedMobSpawnGroup> spawnCreaturesMerged = new ArrayList<WeightedMobSpawnGroup>();
     public List<WeightedMobSpawnGroup> spawnWaterCreaturesMerged = new ArrayList<WeightedMobSpawnGroup>();
     public List<WeightedMobSpawnGroup> spawnAmbientCreaturesMerged = new ArrayList<WeightedMobSpawnGroup>();
-
+    
     public enum VillageType
     {
         disabled,
@@ -167,9 +172,6 @@ public class BiomeConfig extends ConfigFile
     }
 
     public RareBuildingType rareBuildingType;
-
-    public StandardBiomeTemplate defaultSettings;
-    public WorldConfig worldConfig;
 
     public BiomeConfig(BiomeLoadInstruction loadInstruction, BiomeConfigStub biomeConfigStub, SettingsMap settings, WorldConfig worldConfig)
     {
@@ -205,6 +207,13 @@ public class BiomeConfig extends ConfigFile
         if (settings.isNewConfig())
         {
             this.resourceSequence.addAll(defaultSettings.createDefaultResources(this));
+            for (ConfigFunction<BiomeConfig> res : this.resourceSequence)
+            {
+            	if(res instanceof CustomStructureGen)
+            	{
+            		this.customStructures.add((CustomStructureGen)res);
+            	}
+            }
         }
 
         // Set water level
@@ -226,6 +235,11 @@ public class BiomeConfig extends ConfigFile
         }
     }
 
+    public List<CustomStructureGen> getCustomStructures()
+    {
+    	return this.customStructures;
+    }
+    
     /**
      * This is a pretty weak map from -0.5 to ~-0.8 (min vanilla temperature)
      *
@@ -236,6 +250,8 @@ public class BiomeConfig extends ConfigFile
      */
     public int getSnowHeight(float temp)
     {
+    	// TODO: Reimplement this
+    	/*
         if (this.worldConfig.useTemperatureForSnowHeight)
         {
             if (temp <= -.75)
@@ -253,6 +269,7 @@ public class BiomeConfig extends ConfigFile
             if (temp <= -.5)
                 return 1;
         }
+        */
         return 0;
     }
 
@@ -297,9 +314,9 @@ public class BiomeConfig extends ConfigFile
 
         this.stoneBlock = settings.getSetting(BiomeStandardValues.STONE_BLOCK);
         this.surfaceBlock = settings.getSetting(BiomeStandardValues.SURFACE_BLOCK,
-                OTG.toLocalMaterialData(defaultSettings.defaultSurfaceBlock, 0));
+                MaterialHelper.toLocalMaterialData(defaultSettings.defaultSurfaceBlock, 0));
         this.groundBlock = settings.getSetting(BiomeStandardValues.GROUND_BLOCK,
-                OTG.toLocalMaterialData(defaultSettings.defaultGroundBlock, 0));
+                MaterialHelper.toLocalMaterialData(defaultSettings.defaultGroundBlock, 0));
         this.replacedBlocks = settings.getSetting(BiomeStandardValues.REPLACED_BLOCKS);
         this.surfaceAndGroundControl = readSurfaceAndGroundControlSettings(settings);
 
@@ -332,7 +349,7 @@ public class BiomeConfig extends ConfigFile
         this.strongholdsEnabled = settings.getSetting(BiomeStandardValues.STRONGHOLDS_ENABLED, defaultSettings.defaultStrongholds);
         this.oceanMonumentsEnabled = settings.getSetting(BiomeStandardValues.OCEAN_MONUMENTS_ENABLED, defaultSettings.defaultOceanMonuments);
         this.woodLandMansionsEnabled = settings.getSetting(BiomeStandardValues.WOODLAND_MANSIONS_ENABLED, defaultSettings.defaultWoodlandMansions);
-        this.netherFortressesEnabled = settings.getSetting(BiomeStandardValues.NETHER_FORTRESSES_ENABLED, true);
+        this.netherFortressesEnabled = settings.getSetting(BiomeStandardValues.NETHER_FORTRESSES_ENABLED, defaultSettings.defaultNetherFortressEnabled);
         this.villageType = settings.getSetting(BiomeStandardValues.VILLAGE_TYPE, defaultSettings.defaultVillageType);
         this.mineshaftsRarity = settings.getSetting(BiomeStandardValues.MINESHAFT_RARITY);
         this.mineshaftType = settings.getSetting(BiomeStandardValues.MINESHAFT_TYPE, defaultSettings.defaultMineshaftType);
@@ -341,8 +358,9 @@ public class BiomeConfig extends ConfigFile
         this.biomeDictId = settings.getSetting(BiomeStandardValues.BIOME_DICT_ID, defaultSettings.defaultBiomeDictId);
     	this.inheritMobsBiomeName = settings.getSetting(BiomeStandardValues.INHERIT_MOBS_BIOME_NAME, defaultSettings.defaultInheritMobsBiomeName);
 
-        this.readCustomObjectSettings(settings);
+        this.readCustomObjectSettings(settings);        
         this.readResourceSettings(settings);
+        this.inheritSaplingResource = settings.getSetting(BiomeStandardValues.INHERIT_SAPLING_RESOURCE, defaultSettings.inheritSaplingResource);
         this.heightMatrix = new double[this.worldConfig.worldHeightCap / TerrainShapeBase.PIECE_Y_SIZE + 1];
         this.readHeightSettings(settings, this.heightMatrix, BiomeStandardValues.CUSTOM_HEIGHT_CONTROL, defaultSettings.defaultCustomHeightControl);
         this.riverHeightMatrix = new double[this.worldConfig.worldHeightCap / TerrainShapeBase.PIECE_Y_SIZE + 1];
@@ -392,14 +410,23 @@ public class BiomeConfig extends ConfigFile
                 }
             }
         }
-    	
+
         for (ConfigFunction<BiomeConfig> res : settings.getConfigFunctions(this, this.doResourceInheritance))
         {
             if (res != null)
             {
                 if (!(res instanceof SaplingGen))
                 {
-                    this.resourceSequence.add(res);
+                	this.resourceSequence.add(res);
+                }
+                if(res instanceof CustomStructureGen)
+                {
+                	// Only allow one customstructure per biome.
+                	// For inherited biomes, let the child override the parent.
+                	if(this.customStructures.size() == 0)
+                	{
+                		this.customStructures.add((CustomStructureGen)res);
+                	}
                 }
             }
         }
@@ -666,7 +693,7 @@ public class BiomeConfig extends ConfigFile
 
         writer.putSetting(BiomeStandardValues.FOLIAGE_COLOR, this.foliageColor,
                 "Biome foliage color.");
-
+             
         writer.putSetting(BiomeStandardValues.FOLIAGE_COLOR_IS_MULTIPLIER, this.foliageColorIsMultiplier,
                 "Whether the foliage color is a multiplier. See GrassColorIsMultiplier for details.");
 
@@ -741,9 +768,17 @@ public class BiomeConfig extends ConfigFile
                 "Sapling types: " + StringHelper.join(SaplingType.values(), ", "),
                 "All - will make the tree spawn from all saplings, but not from mushrooms.",
                 "BigJungle - for when 4 jungle saplings grow at once.",
-                "RedMushroom/BrownMushroom - will only grow when bonemeal is used.");
-
+                "RedMushroom/BrownMushroom - will only grow when bonemeal is used.",
+                "",
+                "",
+                "");        
+        
         writer.addConfigFunctions(this.saplingGrowers.values());
+        
+        writer.putSetting(BiomeStandardValues.INHERIT_SAPLING_RESOURCE, this.inheritSaplingResource,
+                "For virtual (replaceToBiomeName) biomes: Inherit all Sapling() resources from the",
+                "replaceToBiomeName biome. If a Sapling() with the same SaplingType is defined ",
+                "in this config and the parent config, the one from this config is used.");
 
         writer.bigTitle("Custom objects");
 
@@ -876,11 +911,11 @@ public class BiomeConfig extends ConfigFile
     protected void correctSettings(boolean logWarnings)
     {
         this.biomeExtends = (this.biomeExtends == null || this.biomeExtends.equals("null")) ? "" : this.biomeExtends;
-        this.biomeSize = lowerThanOrEqualTo(biomeSize, worldConfig.GenerationDepth);
-        this.biomeSizeWhenIsle = lowerThanOrEqualTo(biomeSizeWhenIsle, worldConfig.GenerationDepth);
-        this.biomeSizeWhenBorder = lowerThanOrEqualTo(biomeSizeWhenBorder, worldConfig.GenerationDepth);
-        this.biomeRarity = lowerThanOrEqualTo(biomeRarity, worldConfig.BiomeRarityScale);
-        this.biomeRarityWhenIsle = lowerThanOrEqualTo(biomeRarityWhenIsle, worldConfig.BiomeRarityScale);
+        this.biomeSize = lowerThanOrEqualTo(biomeSize, worldConfig.generationDepth);
+        this.biomeSizeWhenIsle = lowerThanOrEqualTo(biomeSizeWhenIsle, worldConfig.generationDepth);
+        this.biomeSizeWhenBorder = lowerThanOrEqualTo(biomeSizeWhenBorder, worldConfig.generationDepth);
+        this.biomeRarity = lowerThanOrEqualTo(biomeRarity, worldConfig.biomeRarityScale);
+        this.biomeRarityWhenIsle = lowerThanOrEqualTo(biomeRarityWhenIsle, worldConfig.biomeRarityScale);
 
         this.isleInBiome = filterBiomes(this.isleInBiome, this.worldConfig.worldBiomes);
         this.biomeIsBorder = filterBiomes(this.biomeIsBorder, this.worldConfig.worldBiomes);
@@ -894,10 +929,6 @@ public class BiomeConfig extends ConfigFile
 
         this.waterLevelMax = higherThanOrEqualTo(waterLevelMax, this.waterLevelMin);
 
-        //this.replaceToBiomeName = (DefaultBiome.Contain(this.replaceToBiomeName) || this.worldConfig.customBiomeGenerationIds.keySet().contains(this.replaceToBiomeName)) ? this.replaceToBiomeName : "";
-
-        //this.riverBiome = (DefaultBiome.Contain(this.riverBiome) || this.worldConfig.customBiomeGenerationIds.keySet().contains(this.riverBiome)) ? this.riverBiome : "";
-
         // Update configs for worlds with no saved biome id data (OTG 1.12.2 v7, dynamic biome ids update)
     	// Update biomes for legacy worlds, default biomes should be referred to as minecraft:<biomename>
     	if(
@@ -905,14 +936,14 @@ public class BiomeConfig extends ConfigFile
 			this.replaceToBiomeName.trim().length() > 0	        			
 		)
     	{
-    		String defaultBiomeResourceLocation = OTG.getRegistryNameForDefaultBiome(this.replaceToBiomeName);
+    		String defaultBiomeResourceLocation = BiomeRegistryNames.getRegistryNameForDefaultBiome(this.replaceToBiomeName);
     		if(defaultBiomeResourceLocation != null)
     		{
     			this.replaceToBiomeName = defaultBiomeResourceLocation;
     		}
     	} else {
     		// Default biomes must replacetobiomename themselves
-    		String defaultBiomeResourceLocation = OTG.getRegistryNameForDefaultBiome(this.getName());
+    		String defaultBiomeResourceLocation = BiomeRegistryNames.getRegistryNameForDefaultBiome(this.getName());
     		if(defaultBiomeResourceLocation != null)
     		{
     			this.replaceToBiomeName = defaultBiomeResourceLocation;
@@ -938,22 +969,6 @@ public class BiomeConfig extends ConfigFile
                                 DefaultMaterial.LAVA, 2, 3, 8,
                                 worldConfig.worldHeightCap - 8)));
             }
-        }
-
-        // CustomTreeChance
-        int customTreeChance = settings.getSetting(WorldStandardValues.CUSTOM_TREE_CHANCE, 0);
-        if (customTreeChance == 100)
-        {
-            settings.addConfigFunctions(Collections.singleton(
-                    new SaplingGen(this, SaplingType.All, "UseWorld", 100)));
-        }
-        if (customTreeChance > 0 && customTreeChance < 100)
-        {
-            settings.addConfigFunctions(Arrays.<ConfigFunction<?>> asList(
-                    new SaplingGen(this, SaplingType.Oak, "UseWorld", customTreeChance, TreeType.BigTree, 10, TreeType.Tree, 100),
-                    new SaplingGen(this, SaplingType.Redwood, "UseWorld", customTreeChance, TreeType.Taiga2, 100),
-                    new SaplingGen(this, SaplingType.Birch, "UseWorld", customTreeChance, TreeType.Birch, 100),
-                    new SaplingGen(this, SaplingType.SmallJungle, "UseWorld", customTreeChance, TreeType.CocoaTree, 100)));
         }
 
         // FrozenRivers
@@ -985,7 +1000,7 @@ public class BiomeConfig extends ConfigFile
             {
                 try
                 {
-                    LocalMaterialData fromId = OTG.readMaterial(replacedBlock.split("=")[0]);
+                    LocalMaterialData fromId = MaterialHelper.readMaterial(replacedBlock.split("=")[0]);
                     String rest = replacedBlock.split("=")[1];
                     LocalMaterialData to;
                     int minHeight = 0;
@@ -996,12 +1011,12 @@ public class BiomeConfig extends ConfigFile
                     if (start != -1 && end != -1)
                     {   // Found height settings
                         String[] ranges = rest.substring(start + 1, end).split("-");
-                        to = OTG.readMaterial(rest.substring(0, start));
+                        to = MaterialHelper.readMaterial(rest.substring(0, start));
                         minHeight = StringHelper.readInt(ranges[0], minHeight, maxHeight);
                         maxHeight = StringHelper.readInt(ranges[1], minHeight, maxHeight);
                     } else {
                     	// No height settings
-                        to = OTG.readMaterial(rest);
+                        to = MaterialHelper.readMaterial(rest);
                     }
 
                     output.add(new ReplacedBlocksInstruction(fromId, to, minHeight, maxHeight));
@@ -1067,7 +1082,7 @@ public class BiomeConfig extends ConfigFile
 
     public void writeToStream(DataOutput stream, boolean isSinglePlayer) throws IOException
     {
-        writeStringToStream(stream, getName());
+        StreamHelper.writeStringToStream(stream, getName());
 
         stream.writeFloat(this.biomeTemperature);
         stream.writeFloat(this.biomeWetness);
@@ -1078,7 +1093,7 @@ public class BiomeConfig extends ConfigFile
         stream.writeInt(this.foliageColor);
         stream.writeBoolean(this.foliageColorIsMultiplier);
 
-        writeStringToStream(stream, this.replaceToBiomeName);        
-        writeStringToStream(stream, this.biomeDictId);
+        StreamHelper.writeStringToStream(stream, this.replaceToBiomeName);        
+        StreamHelper.writeStringToStream(stream, this.biomeDictId);
     }
 }

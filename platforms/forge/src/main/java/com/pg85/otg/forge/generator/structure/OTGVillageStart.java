@@ -1,8 +1,8 @@
 package com.pg85.otg.forge.generator.structure;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.configuration.biome.BiomeConfig.VillageType;
 import com.pg85.otg.logging.LogMarker;
@@ -23,7 +23,12 @@ public class OTGVillageStart extends StructureStart
     // well ... thats what it does
     private boolean hasMoreThanTwoComponents = false;
 
-    public OTGVillageStart(World world, Random random, int chunkX, int chunkZ, int size)
+    public OTGVillageStart()
+    {
+        // Required by Minecraft's structure loading code
+    }
+    
+    OTGVillageStart(World world, Random random, int chunkX, int chunkZ, int size)
     {
         List<PieceWeight> villagePieces = StructureVillagePieces.getStructureVillageWeightedPieceList(random, size);
 
@@ -112,7 +117,8 @@ public class OTGVillageStart extends StructureStart
                     field.setAccessible(true);
                     field.setInt(subject, villageType);
                     break;
-                } catch (Exception e)
+                }
+                catch (Exception e)
                 {
                     OTG.log(LogMarker.FATAL, "Cannot make village a sandstone village!");
                     OTG.printStackTrace(LogMarker.FATAL, e);
@@ -128,10 +134,5 @@ public class OTGVillageStart extends StructureStart
     public boolean isSizeableStructure()
     {
         return this.hasMoreThanTwoComponents;
-    }
-
-    public OTGVillageStart()
-    {
-        // Required by Minecraft's structure loading code
     }
 }

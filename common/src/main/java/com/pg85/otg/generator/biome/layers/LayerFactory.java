@@ -1,8 +1,8 @@
 package com.pg85.otg.generator.biome.layers;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.configuration.biome.BiomeGroup;
 import com.pg85.otg.configuration.biome.BiomeGroupManager;
@@ -11,7 +11,9 @@ import com.pg85.otg.configuration.world.WorldConfig;
 import com.pg85.otg.logging.LogMarker;
 import com.pg85.otg.network.ConfigProvider;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 /**
@@ -26,6 +28,22 @@ public final class LayerFactory
         // No instances
     }
 
+    private static int getDefaultOceanBiomeId(LocalWorld world)
+    {
+        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(world.getConfigs().getWorldConfig().defaultOceanBiome);
+        if(defaultOceanBiome == null)
+        {
+        	defaultOceanBiome = world.getFirstBiomeOrNull();
+        	if(defaultOceanBiome == null)
+        	{
+    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + world.getConfigs().getWorldConfig().defaultOceanBiome + "\", aborting.");	
+        	}
+        	OTG.log(LogMarker.WARN, "Could not find DefaultOceanBiome \"" + world.getConfigs().getWorldConfig().defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
+        }
+       
+        return defaultOceanBiome.getIds().getOTGBiomeId();
+    }
+    
     /**
      * Creates a pair of layers for use with the normal biome mode.
      * @param world World to create layers for.
@@ -34,8 +52,8 @@ public final class LayerFactory
     public static Layer[] createNormal(LocalWorld world)
     {
         Layer mainLayer = initMainLayer(world);
-
-        Layer zoomedLayer = new LayerZoomVoronoi(10L, mainLayer);
+       
+        Layer zoomedLayer = new LayerZoomVoronoi(10L, getDefaultOceanBiomeId(world),  mainLayer);
         zoomedLayer.initWorldGenSeed(world.getSeed());
 
         return new Layer[] {mainLayer, zoomedLayer};
@@ -52,13 +70,12 @@ public final class LayerFactory
         Layer mainLayer = initMainLayer(world);
         if (worldConfig.imageMode == WorldConfig.ImageMode.ContinueNormal)
         {
-            mainLayer = new LayerFromImage(1L, mainLayer, worldConfig, world);
-        } else
-        {
-            mainLayer = new LayerFromImage(1L, null, worldConfig, world);
+            mainLayer = new LayerFromImage(1L, getDefaultOceanBiomeId(world), mainLayer, worldConfig, world);
+        } else {
+            mainLayer = new LayerFromImage(1L, getDefaultOceanBiomeId(world), null, worldConfig, world);
         }
 
-        Layer zoomedLayer = new LayerZoomVoronoi(10L, mainLayer);
+        Layer zoomedLayer = new LayerZoomVoronoi(10L, getDefaultOceanBiomeId(world), mainLayer);
 
         zoomedLayer.initWorldGenSeed(world.getSeed());
 
@@ -72,13 +89,38 @@ public final class LayerFactory
      */
     public static Layer[] createBeforeGroups(LocalWorld world)
     {
-
         /*
          * int BigLandSize = 2; //default 0, more - smaller int
          * ChanceToIncreaseLand = 6; //default 4 int MaxDepth = 10;
          */
         ConfigProvider configs = world.getConfigs();
         WorldConfig worldConfig = configs.getWorldConfig();
+        
+        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultOceanBiome);
+        if(defaultOceanBiome == null)
+        {
+        	defaultOceanBiome = world.getFirstBiomeOrNull();
+        	if(defaultOceanBiome == null)
+        	{
+    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");	
+        	}
+        	OTG.log(LogMarker.WARN, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
+        }
+
+        LocalBiome defaultFrozenOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultFrozenOceanBiome);
+        if(defaultFrozenOceanBiome == null)
+        {
+        	defaultFrozenOceanBiome = world.getFirstBiomeOrNull();
+        	if(defaultFrozenOceanBiome == null)
+        	{
+        		throw new RuntimeException("Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");	
+        	}
+        	OTG.log(LogMarker.WARN, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
+        }
+        
+        int defaultOceanId = defaultOceanBiome.getIds().getOTGBiomeId();        
+        int defaultFrozenOceanId = defaultFrozenOceanBiome.getIds().getOTGBiomeId();      
+        
         BiomeGroupManager worldGroupManager = worldConfig.biomeGroupManager;
 
         BiomeGroup normalGroup = worldGroupManager.getGroupByName(WorldStandardValues.NORMAL_BIOMES.getName());
@@ -96,108 +138,140 @@ public final class LayerFactory
             iceGroup.processBiomeData(world);
         }
 
-        LocalBiome[][] normalBiomeMap = new LocalBiome[worldConfig.GenerationDepth + 1][];
-        LocalBiome[][] iceBiomeMap = new LocalBiome[worldConfig.GenerationDepth + 1][];
+        LocalBiome[][] normalBiomeMap = new LocalBiome[worldConfig.generationDepth + 1][];
+        LocalBiome[][] iceBiomeMap = new LocalBiome[worldConfig.generationDepth + 1][];
 
-        for (int i = 0; i < worldConfig.GenerationDepth + 1; i++)
+        for (int i = 0; i < worldConfig.generationDepth + 1; i++)
         {
             List<LocalBiome> normalBiomes = new ArrayList<LocalBiome>();
             List<LocalBiome> iceBiomes = new ArrayList<LocalBiome>();
-            for (LocalBiome biome : configs.getBiomeArray())
+            
+            List<LocalBiome> biomes = configs.getBiomeArrayLegacy();
+            for (LocalBiome biome : biomes)
             {
                 if (biome == null)
+                {
                     continue;
+                }
 
                 BiomeConfig biomeConfig = biome.getBiomeConfig();
 
                 if (biomeConfig.biomeSize != i)
+                {
                     continue;
+                }
                 if (normalGroup.containsBiome(biomeConfig.getName()))
                 {
                     for (int t = 0; t < biomeConfig.biomeRarity; t++)
+                    {
                         normalBiomes.add(biome);
+                    }
                     normalGroup.totalGroupRarity -= biomeConfig.biomeRarity;
                 }
 
                 if (iceGroup.containsBiome(biomeConfig.getName()))
                 {
                     for (int t = 0; t < biomeConfig.biomeRarity; t++)
+                    {
                         iceBiomes.add(biome);
+                    }
                     iceGroup.totalGroupRarity -= biomeConfig.biomeRarity;
                 }
 
             }
 
             if (!normalBiomes.isEmpty())
+            {
                 normalBiomeMap[i] = normalBiomes.toArray(new LocalBiome[normalBiomes.size() + normalGroup.totalGroupRarity]);
-            else
+            } else {
                 normalBiomeMap[i] = new LocalBiome[0];
+            }
 
             if (!iceBiomes.isEmpty())
+            {
                 iceBiomeMap[i] = iceBiomes.toArray(new LocalBiome[iceBiomes.size() + iceGroup.totalGroupRarity]);
-            else
+            } else {
                 iceBiomeMap[i] = new LocalBiome[0];
+            }
 
         }
 
-        Layer mainLayer = new LayerEmpty(1L);
+        Layer mainLayer = new LayerEmpty(1L, defaultOceanId);
 
-        Layer RiverLayer = new LayerEmpty(1L);
+        Layer RiverLayer = new LayerEmpty(1L, defaultOceanId);
         boolean riversStarted = false;
 
-        for (int depth = 0; depth <= worldConfig.GenerationDepth; depth++)
+        for (int depth = 0; depth <= worldConfig.generationDepth; depth++)
         {
 
-            mainLayer = new LayerZoom(2001 + depth, mainLayer);
+            mainLayer = new LayerZoom(2001 + depth, defaultOceanId, mainLayer);
 
             if (worldConfig.randomRivers && riversStarted)
-                RiverLayer = new LayerZoom(2001 + depth, RiverLayer);
-
-            if (worldConfig.LandSize == depth)
             {
-                mainLayer = new LayerLand(1L, mainLayer, worldConfig.LandRarity);
-                mainLayer = new LayerZoomFuzzy(2000L, mainLayer);
+                RiverLayer = new LayerZoom(2001 + depth, defaultOceanId, RiverLayer);
             }
 
-            if (depth < (worldConfig.LandSize + worldConfig.LandFuzzy))
-                mainLayer = new LayerLandRandom(depth, mainLayer);
+            if (worldConfig.landSize == depth)
+            {
+                mainLayer = new LayerLand(1L, defaultOceanId, mainLayer, worldConfig.landRarity);
+                mainLayer = new LayerZoomFuzzy(2000L, defaultOceanId, mainLayer);
+            }
+
+            if (depth < (worldConfig.landSize + worldConfig.landFuzzy))
+            {
+                mainLayer = new LayerLandRandom(depth, defaultOceanId, mainLayer);
+            }
 
             if (normalBiomeMap[depth].length != 0 || iceBiomeMap[depth].length != 0)
-                mainLayer = new LayerBiomeBeforeGroups(200, mainLayer, normalBiomeMap[depth], iceBiomeMap[depth]);
-
-            if (iceGroup.getGenerationDepth() == depth)
-                mainLayer = new LayerIce(depth, mainLayer, iceGroup.getGroupRarity());
-
-            if (worldConfig.riverRarity == depth)
-                if (worldConfig.randomRivers)
-                {
-                    RiverLayer = new LayerRiverInit(155, RiverLayer);
-                    riversStarted = true;
-                } else
-                    mainLayer = new LayerRiverInit(155, mainLayer);
-
-            if ((worldConfig.GenerationDepth - worldConfig.riverSize) == depth)
             {
-                if (worldConfig.randomRivers)
-                    RiverLayer = new LayerRiver(5 + depth, RiverLayer);
-                else
-                    mainLayer = new LayerRiver(5 + depth, mainLayer);
+                mainLayer = new LayerBiomeBeforeGroups(200, defaultOceanId, mainLayer, normalBiomeMap[depth], iceBiomeMap[depth]);
             }
 
-            LayerBiomeBorder layerBiomeBorder = new LayerBiomeBorder(3000 + depth, world);
-            LayerBiomeInBiome layerBiomeIsle = new LayerBiomeInBiome(mainLayer, world.getSeed());
+            if (iceGroup.getGenerationDepth() == depth)
+            {
+                mainLayer = new LayerIce(depth, defaultOceanId, mainLayer, iceGroup.getGroupRarity());
+            }
+
+            if (worldConfig.riverRarity == depth)
+            {
+                if (worldConfig.randomRivers)
+                {
+                    RiverLayer = new LayerRiverInit(155, defaultOceanId, RiverLayer);
+                    riversStarted = true;
+                } else {
+                    mainLayer = new LayerRiverInit(155, defaultOceanId, mainLayer);
+                }
+        	}
+            if ((worldConfig.generationDepth - worldConfig.riverSize) == depth)
+            {
+                if (worldConfig.randomRivers)
+                {
+                    RiverLayer = new LayerRiver(5 + depth, defaultOceanId, RiverLayer);
+                } else {
+                    mainLayer = new LayerRiver(5 + depth, defaultOceanId, mainLayer);
+                }
+            }
+
+            LayerBiomeBorder layerBiomeBorder = new LayerBiomeBorder(3000 + depth, world, defaultOceanId);
+            LayerBiomeInBiome layerBiomeIsle = new LayerBiomeInBiome(mainLayer, world.getSeed(), defaultOceanId);
             boolean haveBorder = false;
             boolean haveIsle = false;
-            for (LocalBiome biome : configs.getBiomeArray())
+            
+            List<LocalBiome> biomes = configs.getBiomeArrayLegacy();
+            for (LocalBiome biome : biomes)            
             {
                 if (biome == null)
+                {
                     continue;
+                }
 
                 BiomeConfig biomeConfig = biome.getBiomeConfig();
 
-                if (biomeConfig.biomeSize == depth
-                        && worldConfig.IsleBiomes.contains(biomeConfig.getName())
-                        && biomeConfig.isleInBiome != null)
+                if (
+            		biomeConfig.biomeSize == depth
+                    && worldConfig.isleBiomes.contains(biomeConfig.getName())
+                    && biomeConfig.isleInBiome != null
+                )
                 {
                     haveIsle = true;
                     boolean[] biomeCanSpawnIn = new boolean[1024];
@@ -213,13 +287,15 @@ public final class LayerFactory
                         	biomeCanSpawnIn[islandInBiome.getIds().getOTGBiomeId()] = true;
                         }
                     }
-                    int chance = (worldConfig.BiomeRarityScale + 1) - biomeConfig.biomeRarity;
+                    int chance = (worldConfig.biomeRarityScale + 1) - biomeConfig.biomeRarity;
                     layerBiomeIsle.addIsle(biome, chance, biomeCanSpawnIn, inOcean);
                 }
 
-                if (biomeConfig.biomeSize == depth
-                        && worldConfig.BorderBiomes.contains(biomeConfig.getName())
-                        && biomeConfig.biomeIsBorder != null)
+                if (
+            		biomeConfig.biomeSize == depth
+	                && worldConfig.borderBiomes.contains(biomeConfig.getName())
+	                && biomeConfig.biomeIsBorder != null
+                )
                 {
                     haveBorder = true;
                     for (String replaceFromName : biomeConfig.biomeIsBorder)
@@ -249,22 +325,25 @@ public final class LayerFactory
         }
 
         if (worldConfig.randomRivers)
-            mainLayer = new LayerMixWithRiver(1L, mainLayer, RiverLayer, configs, world);
-        else
-            mainLayer = new LayerMix(1L, mainLayer, configs, world);
+        {
+            mainLayer = new LayerMixWithRiver(1L, mainLayer, RiverLayer, configs, world, defaultOceanId, defaultFrozenOceanId);
+        } else {
+            mainLayer = new LayerMix(1L, mainLayer, configs, world, defaultOceanId, defaultFrozenOceanId);
+        }
 
-        mainLayer = new LayerSmooth(400L, mainLayer);
+        mainLayer = new LayerSmooth(400L, defaultOceanId, mainLayer);
 
         if (worldConfig.biomeMode == OTG.getBiomeModeManager().FROM_IMAGE)
         {
-
             if (worldConfig.imageMode == WorldConfig.ImageMode.ContinueNormal)
-                mainLayer = new LayerFromImage(1L, mainLayer, worldConfig, world);
-            else
-                mainLayer = new LayerFromImage(1L, null, worldConfig, world);
+            {
+                mainLayer = new LayerFromImage(1L, defaultOceanId, mainLayer, worldConfig, world);
+            } else {
+                mainLayer = new LayerFromImage(1L, defaultOceanId, null, worldConfig, world);
+            }
         }
 
-        Layer zoomedLayer = new LayerZoomVoronoi(10L, mainLayer);
+        Layer zoomedLayer = new LayerZoomVoronoi(10L, defaultOceanId, mainLayer);
 
         zoomedLayer.initWorldGenSeed(world.getSeed());
 
@@ -275,83 +354,117 @@ public final class LayerFactory
     {
         ConfigProvider configs = world.getConfigs();
         WorldConfig worldConfig = configs.getWorldConfig();
+        
+        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultOceanBiome);
+        if(defaultOceanBiome == null)
+        {
+        	defaultOceanBiome = world.getFirstBiomeOrNull();
+        	if(defaultOceanBiome == null)
+        	{
+        		OTG.log(LogMarker.FATAL, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");
+    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");	
+        	}
+        	OTG.log(LogMarker.WARN, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
+        }
+
+        LocalBiome defaultFrozenOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultFrozenOceanBiome);
+        if(defaultFrozenOceanBiome == null)
+        {
+        	defaultFrozenOceanBiome = world.getFirstBiomeOrNull();
+        	if(defaultFrozenOceanBiome == null)
+        	{
+        		OTG.log(LogMarker.FATAL, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");
+        		throw new RuntimeException("Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");	
+        	}
+        	OTG.log(LogMarker.WARN, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
+        }
+        
+        int defaultOceanId = defaultOceanBiome.getIds().getOTGBiomeId();        
+        int defaultFrozenOceanId = defaultFrozenOceanBiome.getIds().getOTGBiomeId(); 
+        
         BiomeGroupManager groupManager = worldConfig.biomeGroupManager;
 
-        Layer mainLayer = new LayerEmpty(1L);
-        Layer RiverLayer = new LayerEmpty(1L);
+        Layer mainLayer = new LayerEmpty(1L, defaultOceanId);
+        Layer RiverLayer = new LayerEmpty(1L, defaultOceanId);
 
         boolean riversStarted = false;
 
-        for (int depth = 0; depth <= worldConfig.GenerationDepth; depth++)
+        for (int depth = 0; depth <= worldConfig.generationDepth; depth++)
         {
-            mainLayer = new LayerZoom(2001 + depth, mainLayer);
+            mainLayer = new LayerZoom(2001 + depth, defaultOceanId, mainLayer);
 
             if (worldConfig.randomRivers && riversStarted)
             {
-                RiverLayer = new LayerZoom(2001 + depth, RiverLayer);
+                RiverLayer = new LayerZoom(2001 + depth, defaultOceanId, RiverLayer);
             }
 
-            if (worldConfig.LandSize == depth)
+            if (worldConfig.landSize == depth)
             {
-                mainLayer = new LayerLand(1L, mainLayer, worldConfig.LandRarity);
-                mainLayer = new LayerZoomFuzzy(2000L, mainLayer);
+                mainLayer = new LayerLand(1L, defaultOceanId, mainLayer, worldConfig.landRarity);
+                mainLayer = new LayerZoomFuzzy(2000L, defaultOceanId, mainLayer);
             }
 
-            if (depth < (worldConfig.LandSize + worldConfig.LandFuzzy))
+            if (depth < (worldConfig.landSize + worldConfig.landFuzzy))
             {
-                mainLayer = new LayerLandRandom(depth, mainLayer);
+                mainLayer = new LayerLandRandom(depth, defaultOceanId, mainLayer);
             }
 
             if (!groupManager.isGroupDepthMapEmpty(depth))
             {
-                mainLayer = new LayerBiomeGroups(mainLayer, groupManager, depth, worldConfig.FreezeAllColdGroupBiomes);
+                mainLayer = new LayerBiomeGroups(mainLayer, groupManager, depth, worldConfig.freezeAllColdGroupBiomes);
             }
 
             if (!groupManager.isBiomeDepthMapEmpty(depth))
             {
-                mainLayer = new LayerBiome(200, mainLayer, groupManager, depth, worldConfig.FrozenOceanTemperature);
+                mainLayer = new LayerBiome(200, defaultOceanId, mainLayer, groupManager, depth, worldConfig.frozenOceanTemperature);
             }
 
             if (depth == 3)
             {
-                mainLayer = new LayerIce(depth, mainLayer);
+                mainLayer = new LayerIce(depth, defaultOceanId, mainLayer);
             }
 
             if (worldConfig.riverRarity == depth)
             {
                 if (worldConfig.randomRivers)
                 {
-                    RiverLayer = new LayerRiverInit(155, RiverLayer);
+                    RiverLayer = new LayerRiverInit(155, defaultOceanId, RiverLayer);
                     riversStarted = true;
                 } else {
-                    mainLayer = new LayerRiverInit(155, mainLayer);
+                    mainLayer = new LayerRiverInit(155, defaultOceanId, mainLayer);
                 }
         	}
 
-            if ((worldConfig.GenerationDepth - worldConfig.riverSize) == depth)
+            if ((worldConfig.generationDepth - worldConfig.riverSize) == depth)
             {
                 if (worldConfig.randomRivers)
                 {
-                    RiverLayer = new LayerRiver(5 + depth, RiverLayer);
+                    RiverLayer = new LayerRiver(5 + depth, defaultOceanId, RiverLayer);
                 } else {
-                    mainLayer = new LayerRiver(5 + depth, mainLayer);
+                    mainLayer = new LayerRiver(5 + depth, defaultOceanId, mainLayer);
                 }
             }
 
-            LayerBiomeBorder layerBiomeBorder = new LayerBiomeBorder(3000 + depth, world);
-            LayerBiomeInBiome layerBiomeIsle = new LayerBiomeInBiome(mainLayer, world.getSeed());
+            LayerBiomeBorder layerBiomeBorder = new LayerBiomeBorder(3000 + depth, world, defaultOceanId);
+            LayerBiomeInBiome layerBiomeIsle = new LayerBiomeInBiome(mainLayer, world.getSeed(), defaultOceanId);
             boolean haveBorder = false;
             boolean haveIsle = false;
-            for (LocalBiome biome : configs.getBiomeArray())
+                        
+            List<LocalBiome> biomes = configs.getBiomeArrayLegacy();
+            for (LocalBiome biome : biomes)
             {
                 if (biome == null)
+                {
                     continue;
+                }
 
                 BiomeConfig biomeConfig = biome.getBiomeConfig();
 
-                if (biomeConfig.biomeSizeWhenIsle == depth
-                        && worldConfig.IsleBiomes.contains(biomeConfig.getName())
-                        && biomeConfig.isleInBiome != null)
+                if (
+            		biomeConfig.biomeSizeWhenIsle == depth
+                    && worldConfig.isleBiomes.contains(biomeConfig.getName())
+                    && biomeConfig.isleInBiome != null
+                )
                 {
                     haveIsle = true;
                     boolean[] biomeCanSpawnIn = new boolean[1024];
@@ -368,13 +481,15 @@ public final class LayerFactory
                         }
                     }
 
-                    int chance = (worldConfig.BiomeRarityScale + 1) - biomeConfig.biomeRarityWhenIsle;
+                    int chance = (worldConfig.biomeRarityScale + 1) - biomeConfig.biomeRarityWhenIsle;
                     layerBiomeIsle.addIsle(biome, chance, biomeCanSpawnIn, inOcean);
                 }
 
-                if (biomeConfig.biomeSizeWhenBorder == depth
-                        && worldConfig.BorderBiomes.contains(biomeConfig.getName())
-                        && biomeConfig.biomeIsBorder != null)
+                if (
+            		biomeConfig.biomeSizeWhenBorder == depth
+                    && worldConfig.borderBiomes.contains(biomeConfig.getName())
+                    && biomeConfig.biomeIsBorder != null
+                )
                 {
                     haveBorder = true;
                     for (String replaceFromName : biomeConfig.biomeIsBorder)
@@ -388,7 +503,7 @@ public final class LayerFactory
                     	}
                     	if(replaceFromBiome == null)
                     	{
-                    		OTG.log(LogMarker.TRACE, "Could not find BorderBiome \"" + replaceFromName + "\" for biome \"" + biomeConfig.getName() + "\", ignoring.");
+                    		OTG.log(LogMarker.WARN, "Could not find BorderBiome \"" + replaceFromName + "\" for biome \"" + biomeConfig.getName() + "\", ignoring.");
                     		continue;
                     	}
             			replaceFrom = replaceFromBiome.getIds().getOTGBiomeId();
@@ -412,12 +527,12 @@ public final class LayerFactory
 
         if (worldConfig.randomRivers)
         {
-            mainLayer = new LayerMixWithRiver(1L, mainLayer, RiverLayer, configs, world);
+            mainLayer = new LayerMixWithRiver(1L, mainLayer, RiverLayer, configs, world, defaultOceanId, defaultFrozenOceanId);
         } else {
-            mainLayer = new LayerMix(1L, mainLayer, configs, world);
+            mainLayer = new LayerMix(1L, mainLayer, configs, world, defaultOceanId, defaultFrozenOceanId);
         }
 
-        mainLayer = new LayerSmooth(400L, mainLayer);
+        mainLayer = new LayerSmooth(400L, defaultOceanId, mainLayer);
 
         return mainLayer;
     }

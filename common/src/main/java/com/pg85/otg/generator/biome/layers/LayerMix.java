@@ -1,8 +1,8 @@
 package com.pg85.otg.generator.biome.layers;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.world.WorldConfig;
 import com.pg85.otg.generator.biome.ArraysCache;
 import com.pg85.otg.logging.LogMarker;
@@ -13,17 +13,19 @@ public class LayerMix extends Layer
 
     private ConfigProvider configs;
     private int[] riverBiomes;
+    private int defaultFrozenOceanId;
 
-    public LayerMix(long seed, Layer childLayer, ConfigProvider configs, LocalWorld world)
+    LayerMix(long seed, Layer childLayer, ConfigProvider configs, LocalWorld world, int defaultOceanId, int defaultFrozenOceanId)
     {
-        super(seed);
+        super(seed, defaultOceanId);
+        this.defaultFrozenOceanId = defaultFrozenOceanId;
         this.child = childLayer;
         this.configs = configs;
         this.riverBiomes = new int[world.getMaxBiomesCount()];
 
         for (int id = 0; id < this.riverBiomes.length; id++)
         {
-            LocalBiome biome = configs.getBiomeByIdOrNull(id);
+            LocalBiome biome = configs.getBiomeByOTGIdOrNull(id);
 
             if (biome == null || biome.getBiomeConfig().riverBiome.isEmpty())
             {
@@ -33,7 +35,7 @@ public class LayerMix extends Layer
             	LocalBiome riverBiome = world.getBiomeByNameOrNull(biome.getBiomeConfig().riverBiome);
     			if(riverBiome == null)
     			{
-    				OTG.log(LogMarker.TRACE, "RiverBiome: " + biome.getBiomeConfig().riverBiome + " could not be found for biome \"" + biome.getName() + "\", substituting self.");
+    				OTG.log(LogMarker.WARN, "RiverBiome: " + biome.getBiomeConfig().riverBiome + " could not be found for biome \"" + biome.getName() + "\", substituting self.");
     				riverBiome = biome;
     			}
             	this.riverBiomes[id] = riverBiome.getIds().getOTGBiomeId();
@@ -62,35 +64,12 @@ public class LayerMix extends Layer
     {
         int[] childInts = this.child.getInts(world, cache, x, z, xSize, zSize);
         int[] thisInts = cache.getArray(xSize * zSize);
-        WorldConfig worldConfig = this.configs.getWorldConfig();
 
         int currentPiece;
         int cachedId;
         
-        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultOceanBiome);
-        if(defaultOceanBiome == null)
-        {
-        	defaultOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultOceanBiome == null)
-        	{
-    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
-
-        LocalBiome defaultFrozenOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultFrozenOceanBiome);
-        if(defaultFrozenOceanBiome == null)
-        {
-        	defaultFrozenOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultFrozenOceanBiome == null)
-        	{
-        		throw new RuntimeException("Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
-        
-        int defaultOceanId = defaultOceanBiome.getIds().getOTGBiomeId();        
-        int defaultFrozenOceanId = defaultFrozenOceanBiome.getIds().getOTGBiomeId();
+        WorldConfig worldConfig = this.configs.getWorldConfig();
+        LocalBiome biome;        
         
         for (int zi = 0; zi < zSize; zi++)
         {
@@ -100,21 +79,22 @@ public class LayerMix extends Layer
 
                 if ((currentPiece & LandBit) != 0)
                 {
-                    cachedId = currentPiece & BiomeBits;
-                    
-                    if(cachedId == 0) // TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
-                    {
-                    	cachedId = defaultOceanId;
-                    }                    
+                	if((currentPiece & BiomeBitsAreSetBit) != 0)
+                	{
+                		cachedId = currentPiece & BiomeBits;	
+                	} else {
+                		// TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
+                		cachedId = this.defaultOceanId;
+                	}
                 }
-                else if (worldConfig.FrozenOcean && (currentPiece & IceBit) != 0)
+                else if (worldConfig.frozenOcean && (currentPiece & IceBit) != 0)
                 {
-                    cachedId = defaultFrozenOceanId;
+                    cachedId = this.defaultFrozenOceanId;
                 } else {
-                    cachedId = defaultOceanId;
+                    cachedId = this.defaultOceanId;
                 }
                 
-                LocalBiome biome = this.configs.getBiomeByIdOrNull(cachedId);
+                biome = this.configs.getBiomeByOTGIdOrNull(cachedId);
                 
                 if (worldConfig.riversEnabled && (currentPiece & RiverBits) != 0 && !biome.getBiomeConfig().riverBiome.isEmpty())
                 {
@@ -133,32 +113,8 @@ public class LayerMix extends Layer
     {
         int[] childInts = this.child.getInts(world, cache, x, z, xSize, zSize);
         int[] thisInts = cache.getArray(xSize * zSize);
-        WorldConfig worldConfig = this.configs.getWorldConfig();
-
-        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultOceanBiome);
-        if(defaultOceanBiome == null)
-        {
-        	defaultOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultOceanBiome == null)
-        	{
-    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
-
-        LocalBiome defaultFrozenOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultFrozenOceanBiome);
-        if(defaultFrozenOceanBiome == null)
-        {
-        	defaultFrozenOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultFrozenOceanBiome == null)
-        	{
-        		throw new RuntimeException("Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
         
-        int defaultOceanId = defaultOceanBiome.getIds().getOTGBiomeId();        
-        int defaultFrozenOceanId = defaultFrozenOceanBiome.getIds().getOTGBiomeId();
+        WorldConfig worldConfig = this.configs.getWorldConfig();
         
         int currentPiece;
         int cachedId;
@@ -170,18 +126,19 @@ public class LayerMix extends Layer
 
                 if ((currentPiece & LandBit) != 0)
                 {
-                    cachedId = currentPiece & BiomeBits;
-                    
-                    if(cachedId == 0) // TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
-                    {
-                    	cachedId = defaultOceanId;
-                    }                      
+                	if((currentPiece & BiomeBitsAreSetBit) != 0)
+                	{
+                		cachedId = currentPiece & BiomeBits;	
+                	} else {
+                		// TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
+                		cachedId = this.defaultOceanId;
+                	}
                 }
-                else if (worldConfig.FrozenOcean && (currentPiece & IceBit) != 0)
+                else if (worldConfig.frozenOcean && (currentPiece & IceBit) != 0)
                 {
-                    cachedId = defaultFrozenOceanId;
+                    cachedId = this.defaultFrozenOceanId;
                 } else {
-                    cachedId = defaultOceanId;
+                    cachedId = this.defaultOceanId;
                 }
 
                 currentPiece = cachedId;
@@ -196,35 +153,12 @@ public class LayerMix extends Layer
     {
         int[] childInts = this.child.getInts(world, cache, x, z, xSize, zSize);
         int[] thisInts = cache.getArray(xSize * zSize);
-        WorldConfig worldConfig = this.configs.getWorldConfig();
-
-        LocalBiome defaultOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultOceanBiome);
-        if(defaultOceanBiome == null)
-        {
-        	defaultOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultOceanBiome == null)
-        	{
-    			throw new RuntimeException("Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultOceanBiome \"" + worldConfig.defaultOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
-
-        LocalBiome defaultFrozenOceanBiome = world.getBiomeByNameOrNull(worldConfig.defaultFrozenOceanBiome);
-        if(defaultFrozenOceanBiome == null)
-        {
-        	defaultFrozenOceanBiome = world.getFirstBiomeOrNull();
-        	if(defaultFrozenOceanBiome == null)
-        	{
-        		throw new RuntimeException("Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", aborting.");	
-        	}
-        	OTG.log(LogMarker.TRACE, "Could not find DefaultFrozenOceanBiome \"" + worldConfig.defaultFrozenOceanBiome + "\", substituting \"" + defaultOceanBiome.getName() + "\".");
-        }
         
-        int defaultOceanId = defaultOceanBiome.getIds().getOTGBiomeId();        
-        int defaultFrozenOceanId = defaultFrozenOceanBiome.getIds().getOTGBiomeId();
+        WorldConfig worldConfig = this.configs.getWorldConfig();
         
         int currentPiece;
         int cachedId;
+        LocalBiome biome;
         for (int zi = 0; zi < zSize; zi++)
         {
             for (int xi = 0; xi < xSize; xi++)
@@ -233,21 +167,22 @@ public class LayerMix extends Layer
 
                 if ((currentPiece & LandBit) != 0)
                 {
-                    cachedId = currentPiece & BiomeBits;
-                    
-                    if(cachedId == 0) // TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
-                    {
-                    	cachedId = defaultOceanId;
-                    }                      
+                	if((currentPiece & BiomeBitsAreSetBit) != 0)
+                	{
+                		cachedId = currentPiece & BiomeBits;	
+                	} else {
+                		// TODO: When does this happen, is it okay for this to happen, shouldn't there be a land biome available?
+                		cachedId = this.defaultOceanId;
+                	}
                 }
-                else if (worldConfig.FrozenOcean && (currentPiece & IceBit) != 0)
+                else if (worldConfig.frozenOcean && (currentPiece & IceBit) != 0)
                 {
-                    cachedId = defaultFrozenOceanId;
+                    cachedId = this.defaultFrozenOceanId;
                 } else {
-                    cachedId = defaultOceanId;
+                    cachedId = this.defaultOceanId;
                 }
 
-                LocalBiome biome = this.configs.getBiomeByIdOrNull(cachedId);
+                biome = this.configs.getBiomeByOTGIdOrNull(cachedId);
 
                 if (worldConfig.riversEnabled && (currentPiece & RiverBits) != 0 && !biome.getBiomeConfig().riverBiome.isEmpty())
                 {
@@ -261,5 +196,4 @@ public class LayerMix extends Layer
         }
         return thisInts;
     }
-
 }

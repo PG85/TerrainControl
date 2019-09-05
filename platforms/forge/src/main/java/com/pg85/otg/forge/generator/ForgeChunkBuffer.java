@@ -1,9 +1,9 @@
 package com.pg85.otg.forge.generator;
 
+import com.pg85.otg.common.LocalMaterialData;
 import com.pg85.otg.forge.util.ForgeMaterialData;
 import com.pg85.otg.generator.ChunkBuffer;
 import com.pg85.otg.util.ChunkCoordinate;
-import com.pg85.otg.util.LocalMaterialData;
 
 import net.minecraft.block.state.IBlockState;
 import net.minecraft.world.World;
@@ -16,9 +16,8 @@ import net.minecraft.world.chunk.ChunkPrimer;
  * blocks internally, just like Minecraft does for chunk generation.
  *
  */
-class ForgeChunkBuffer implements ChunkBuffer
+public class ForgeChunkBuffer implements ChunkBuffer
 {
-
     private final ChunkCoordinate chunkCoord;
     private final ChunkPrimer chunkPrimer;
 
@@ -28,6 +27,11 @@ class ForgeChunkBuffer implements ChunkBuffer
         this.chunkPrimer = new ChunkPrimer();
     }
 
+    public ChunkPrimer getChunkPrimer()
+    {
+    	return chunkPrimer;
+    }
+    
     @Override
     public ChunkCoordinate getChunkCoordinate()
     {

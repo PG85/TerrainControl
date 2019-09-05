@@ -1,6 +1,6 @@
 package com.pg85.otg.generator.biome.layers;
 
-import com.pg85.otg.LocalWorld;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.generator.biome.ArraysCache;
 
 /**
@@ -42,7 +42,7 @@ public abstract class Layer
      * The base seed set during layer construction, all other seeds are based
      * upon this one.
      */
-    protected long baseSeed;
+    private long baseSeed;
 
     /**
      * A general seed kept for use in world generation
@@ -73,7 +73,7 @@ public abstract class Layer
     /**
      * This helps our random numbers be a little more random
      */
-    protected static final int entropy = 10000;
+    protected static final int Entropy = 10000;
 
     /*
      * LayerIsland - chance to big land
@@ -103,7 +103,8 @@ public abstract class Layer
      */
     // [ Biome Data ]
     protected static final int BiomeBits = 1023;            //>>	1st-10th Bits           // 255 63
-
+    protected static final int BiomeBitsAreSetBit = (1 << 22);       //	23rd Bit, 4194304
+    
     // [ Flags ]
     protected static final int LandBit = (1 << 10);         //>>	11th Bit, 1024          // 256 64
     protected static final int IslandBit = (1 << 11);       //>>	12th Bit, 2048          // 4096 1024
@@ -114,20 +115,10 @@ public abstract class Layer
     protected static final int BiomeGroupBits = (127 << BiomeGroupShift);   //>>	14th-20th Bits, 1040384
 
     // [ River Data ]
-    protected static final int RiverShift = 20;
+    private static final int RiverShift = 20;
     protected static final int RiverBits = (3 << RiverShift);               //>>	21st-22nd Bits, 3145728  //3072 768
     protected static final int RiverBitOne = (1 << RiverShift);             //>>	21st Bit, 1048576
     protected static final int RiverBitTwo = (1 << (RiverShift + 1));       //>>	22nd Bit, 2097152
-
-    /**
-     * In a single step, checks for land and when present returns biome data
-     * @param selection The location to be checked
-     * @return Biome Data or 0 when not on land
-     */
-    protected static int getBiomeFromLayer(int selection)
-    {
-        return (selection & LandBit) != 0 ? (selection & BiomeBits) : 0;
-    }
 
     private static long getScrambledBaseSeed(long baseSeed)
     {
@@ -154,16 +145,16 @@ public abstract class Layer
         return scrambledWorldSeed;
     }
 
-    protected Layer(long seed)
+    protected int defaultOceanId;
+    protected Layer(long seed, int defaultOceanId)
     {
         this.baseSeed = seed;
+        this.defaultOceanId = defaultOceanId;
     }
 
     public Layer()
     {
     }
-
-
 
     public void initWorldGenSeed(long worldSeed)
     {
@@ -203,7 +194,9 @@ public abstract class Layer
     {
         int i = (int) ((this.scrambledChunkSeed >> 24) % x);
         if (i < 0)
+        {
             i += x;
+        }
         this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
         this.scrambledChunkSeed += this.scrambledWorldSeed;
         return i;
@@ -213,7 +206,9 @@ public abstract class Layer
     {
         int i = (int) ((this.scrambledGroupSeed >> 24) % x);
         if (i < 0)
+        {
             i += x;
+        }
         this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
         this.scrambledGroupSeed += this.scrambledChunkSeed;
         return i;
@@ -254,4 +249,16 @@ public abstract class Layer
         }))))))))));
     }
 
+    /**
+     * In a single step, checks for land and when present returns biome data
+     * @param selection The location to be checked
+     * @return Biome Data or defaultOceanId when not on land
+     */
+    protected int getBiomeFromLayer(int selection)
+    {
+        return 
+    		(selection & LandBit) != 0 && (selection & BiomeBitsAreSetBit) != 0 ? 
+    		(selection & BiomeBits) : 
+			this.defaultOceanId;
+    }
 }

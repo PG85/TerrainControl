@@ -1,18 +1,14 @@
 package com.pg85.otg.customobjects;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
-import com.pg85.otg.OTG;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.io.SettingsReaderOTGPlus;
 import com.pg85.otg.configuration.settingType.Setting;
 import com.pg85.otg.configuration.settingType.Settings;
-import com.pg85.otg.generator.SpawnableObject;
-import com.pg85.otg.util.BoundingBox;
+import com.pg85.otg.configuration.standard.PluginStandardValues;
 import com.pg85.otg.util.ChunkCoordinate;
-import com.pg85.otg.util.Rotation;
-import com.pg85.otg.util.minecraftTypes.TreeType;
+import com.pg85.otg.util.bo3.Rotation;
+import com.pg85.otg.util.minecraft.defaults.TreeType;
 
-import java.util.Map;
 import java.util.Random;
 
 /**
@@ -25,58 +21,21 @@ import java.util.Random;
  */
 public class TreeObject implements CustomObject
 {
-    // Non-OTG+
-    @Override
-    public boolean trySpawnAt(LocalWorld world, Random random, Rotation rotation, int x, int y, int z)
-    {
-        if (y < minHeight || y > maxHeight)
-        {
-            return false;
-        }
-        
-        return spawnForced(world, random, rotation, x, y, z);
-    }
-    
-    @Override
-    public boolean process(LocalWorld world, Random random, ChunkCoordinate chunkCoord)
-    {
-        // A tree has no frequency or rarity, so spawn it once in the chunk
-        int x = chunkCoord.getBlockXCenter() + random.nextInt(ChunkCoordinate.CHUNK_X_SIZE);
-        int z = chunkCoord.getBlockZCenter() + random.nextInt(ChunkCoordinate.CHUNK_Z_SIZE);
-                
-        int y = world.getHighestBlockYAt(x, z);
-        return trySpawnAt(world, random, Rotation.NORTH, x, y, z);
-    }
-    //
-	
-    private static class TreeSettings extends Settings
-    {
-        static final Setting<Integer> MIN_HEIGHT = intSetting("MinHeight",
-                OTG.WORLD_DEPTH, OTG.WORLD_DEPTH, OTG.WORLD_HEIGHT);
-        static final Setting<Integer> MAX_HEIGHT = intSetting("MaxHeight",
-                OTG.WORLD_HEIGHT, OTG.WORLD_DEPTH, OTG.WORLD_HEIGHT);
-    }
-
     private TreeType type;
-    private int minHeight = OTG.WORLD_DEPTH;
-    private int maxHeight = OTG.WORLD_HEIGHT;
+    public int defaultMinHeight = PluginStandardValues.WORLD_DEPTH;
+    public int defaultMaxHeight = PluginStandardValues.WORLD_HEIGHT;    
+    public int minHeight = PluginStandardValues.WORLD_DEPTH;
+    public int maxHeight = PluginStandardValues.WORLD_HEIGHT;
 
-    public TreeObject(TreeType type)
+    TreeObject(TreeType type)
     {
         this.type = type;
     }
 
     @Override
-    public void onEnable(Map<String, CustomObject> otherObjectsInDirectory)
+    public boolean onEnable()
     {
-        // Stub method
-    }
-
-    public TreeObject(TreeType type, SettingsReaderOTGPlus settings)
-    {
-        this.type = type;
-        this.minHeight = settings.getSetting(TreeSettings.MIN_HEIGHT, TreeSettings.MIN_HEIGHT.getDefaultValue());
-        this.maxHeight = settings.getSetting(TreeSettings.MAX_HEIGHT, TreeSettings.MAX_HEIGHT.getDefaultValue());
+    	return true;
     }
 
     @Override
@@ -92,11 +51,34 @@ public class TreeObject implements CustomObject
     }
 
     @Override
-    public boolean canSpawnAsObject()
+    public boolean trySpawnAt(LocalWorld world, Random random, Rotation rotation, int x, int y, int z)
     {
-        return false;
+        if (y < minHeight || y > maxHeight)
+        {
+            return false;
+        }
+        
+        return spawnForced(world, random, rotation, x, y, z);
     }
 
+    @Override
+    public boolean trySpawnAt(LocalWorld world, Random random, Rotation rotation, int x, int y, int z, int minY, int maxY)
+    {
+    	return false;
+    }
+    
+    @Override
+    public boolean process(LocalWorld world, Random random, ChunkCoordinate chunkCoord)
+    {
+        // A tree has no frequency or rarity, so spawn it once in the chunk
+        int x = chunkCoord.getBlockXCenter() + random.nextInt(ChunkCoordinate.CHUNK_X_SIZE);
+        int z = chunkCoord.getBlockZCenter() + random.nextInt(ChunkCoordinate.CHUNK_Z_SIZE);
+                
+        int y = world.getHighestBlockYAt(x, z);
+        return trySpawnAt(world, random, Rotation.NORTH, x, y, z);
+    }
+    //
+    
     @Override
     public boolean spawnForced(LocalWorld world, Random random, Rotation rotation, int x, int y, int z)
     {
@@ -105,20 +87,29 @@ public class TreeObject implements CustomObject
 
     @Override
     public boolean spawnAsTree(LocalWorld world, Random random, int x, int z)
-    {      	
-    	throw new RuntimeException(); // Fix this properly, re-do the abstraction/inheritance for BO2/BO3/TreeObject/MCObject/CustomObject
-    }
-
-    @Override
-    public CustomObject applySettings(SettingsReaderOTGPlus settings)
     {
-        return new TreeObject(type, settings);
-    }
+        int y = world.getHighestBlockYAt(x, z);
+        Rotation rotation = Rotation.getRandomRotation(random);
 
+        if (trySpawnAt(world, random, rotation, x, y, z))
+        {
+        	return true;
+        }   
+        return false;
+    }
+    
     @Override
-    public boolean hasPreferenceToSpawnIn(LocalBiome biome)
+    public boolean spawnAsTree(LocalWorld world, Random random, int x, int z, int minY, int maxY)
     {
-        return true;
+        int y = world.getHighestBlockYAt(x, z);
+        Rotation rotation = Rotation.getRandomRotation(random);
+
+        if (y < minY || y > maxY)
+        {
+            return false;
+        }
+        
+        return spawnForced(world, random, rotation, x, y, z);        
     }
     
     @Override
@@ -127,18 +118,4 @@ public class TreeObject implements CustomObject
         // Trees cannot be rotated
         return false;
     }
-    
-    // TODO: Clean up inheritance for CustomObject, these methods shouldn't be here
-    
-    @Override
-    public int getMaxBranchDepth()
-    {
-    	throw new RuntimeException();
-    }    
-    
-	@Override
-	public BoundingBox getBoundingBox(Rotation rotation)
-	{
-		return BoundingBox.newEmptyBox();
-	}
 }

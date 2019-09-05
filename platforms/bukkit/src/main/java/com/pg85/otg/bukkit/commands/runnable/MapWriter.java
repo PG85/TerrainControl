@@ -1,10 +1,10 @@
 package com.pg85.otg.bukkit.commands.runnable;
 
-import com.pg85.otg.LocalBiome;
-import com.pg85.otg.LocalWorld;
 import com.pg85.otg.OTG;
 import com.pg85.otg.bukkit.commands.BaseCommand;
 import com.pg85.otg.bukkit.util.WorldHelper;
+import com.pg85.otg.common.LocalBiome;
+import com.pg85.otg.common.LocalWorld;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.logging.LogMarker;
 import net.minecraft.server.v1_12_R1.BiomeBase;
@@ -20,10 +20,10 @@ import javax.imageio.ImageIO;
 
 public class MapWriter implements Runnable
 {
-    public static final int[] defaultColors = {0x3333FF, 0x999900, 0xFFCC33, 0x333300, 0x00FF00, 0x007700, 0x99cc66, 0x00CCCC, 0, 0,
+    private static final int[] DefaultColors = {0x3333FF, 0x999900, 0xFFCC33, 0x333300, 0x00FF00, 0x007700, 0x99cc66, 0x00CCCC, 0, 0,
             0xFFFFFF, 0x66FFFF, 0xCCCCCC, 0xCC9966, 0xFF33cc, 0xff9999, 0xFFFF00, 0x996600, 0x009900, 0x003300, 0x666600};
 
-    public static boolean isWorking = false;
+    private static boolean IsWorking = false;
 
     private World world;
     private int size;
@@ -61,18 +61,18 @@ public class MapWriter implements Runnable
      */
     private int[] getColors(World world)
     {
-        OTG.log(LogMarker.TRACE, "BukkitWorld::UUID:: {}", world.getDataManager().getUUID());
+        OTG.log(LogMarker.DEBUG, "BukkitWorld::UUID:: {}", world.getDataManager().getUUID());
         LocalWorld bukkitWorld = WorldHelper.toLocalWorld(world);
         if (bukkitWorld == null)
         {
             OTG.log(LogMarker.ERROR, "BukkitWorld is null :: Make sure you add `{}` to bukkit.yml", (Object) world.getWorld()
                     .getName());
-            return defaultColors;
+            return DefaultColors;
         }
 
-        LocalBiome[] biomes = bukkitWorld.getConfigs().getBiomeArray();
+        LocalBiome[] biomes = bukkitWorld.getConfigs().getBiomeArrayByOTGId();
         int[] colors = new int[biomes.length];
-        OTG.log(LogMarker.TRACE, "BukkitWorld settings biomes.length::{}", biomes.length);
+        OTG.log(LogMarker.DEBUG, "BukkitWorld settings biomes.length::{}", biomes.length);
 
         for (LocalBiome biome : biomes)
         {
@@ -89,13 +89,13 @@ public class MapWriter implements Runnable
     @Override
     public void run()
     {
-        if (MapWriter.isWorking)
+        if (MapWriter.IsWorking)
         {
             sender.sendMessage(BaseCommand.ERROR_COLOR + "Another instance of map writer is running");
             return;
         }
 
-        MapWriter.isWorking = true;
+        MapWriter.IsWorking = true;
         int height = size;
         int width = size;
         LocalWorld localWorld = WorldHelper.toLocalWorld(world);
@@ -157,7 +157,7 @@ public class MapWriter implements Runnable
                         }
 
                         int arrayPosition = x1 + 16 * z1;
-                        int biomeId = WorldHelper.getGenerationId(biomeBuffer[arrayPosition]);
+                        int biomeId = WorldHelper.getOTGBiomeId(biomeBuffer[arrayPosition]);
                         try
                         {
                             // Biome color
@@ -166,10 +166,11 @@ public class MapWriter implements Runnable
                             // Temperature
                             Color temperatureColor = getBiomeTemperatureColor(biomeBuffer[arrayPosition], localWorld);
                             temperatureImage.setRGB(imageX, imageY, temperatureColor.getRGB());
-                        } catch (ArrayIndexOutOfBoundsException ex)
+                        }
+                        catch (ArrayIndexOutOfBoundsException ex)
                         {
-                            OTG.log(LogMarker.TRACE, "BiomeBuff Idx::{}<{}x/{}z>, Len::{}, ID::{} | Colors Len::{}",
-                                    new Object[] {arrayPosition, x1, z1, biomeBuffer.length, WorldHelper.getGenerationId(biomeBuffer[arrayPosition]), colors.length});
+                            OTG.log(LogMarker.DEBUG, "BiomeBuff Idx::{}<{}x/{}z>, Len::{}, ID::{} | Colors Len::{}",
+                                    new Object[] {arrayPosition, x1, z1, biomeBuffer.length, WorldHelper.getOTGBiomeId(biomeBuffer[arrayPosition]), colors.length});
                         }
                     }
                 }
@@ -187,14 +188,15 @@ public class MapWriter implements Runnable
             ImageIO.write(temperatureImage, "png", new File(label + world.worldData.getName() + "_temperature.png"));
 
             sender.sendMessage(BaseCommand.MESSAGE_COLOR + "Done");
-        } catch (IOException e)
+        }
+        catch (IOException e)
         {
             sender.sendMessage(BaseCommand.ERROR_COLOR + "Exception while writing images: " + e.getLocalizedMessage());
             OTG.log(LogMarker.ERROR, "Failed to write image.");
             OTG.printStackTrace(LogMarker.ERROR, e);
         }
 
-        MapWriter.isWorking = false;
+        MapWriter.IsWorking = false;
     }
 
     /**
@@ -211,7 +213,7 @@ public class MapWriter implements Runnable
         float temperature;
         if (world != null)
         {
-            temperature = world.getBiomeByIdOrNull(WorldHelper.getGenerationId(biome)).getBiomeConfig().biomeTemperature;
+            temperature = world.getBiomeByOTGIdOrNull(WorldHelper.getOTGBiomeId(biome)).getBiomeConfig().biomeTemperature;
         } else
         {
             temperature = biome.getTemperature();
