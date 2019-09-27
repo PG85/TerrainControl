@@ -493,6 +493,6 @@ public class BO3 implements StructuredCustomObject
 
 	@Override
 	public boolean loadChecks() {
-		return this.settings.parseModChecks();
+		return settings == null ? false : this.settings.parseModChecks();
 	}
 }
