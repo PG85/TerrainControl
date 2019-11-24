@@ -6,6 +6,7 @@ import com.pg85.otg.common.LocalBiome;
 import com.pg85.otg.configuration.biome.BiomeConfig;
 import com.pg85.otg.exception.BiomeNotFoundException;
 
+import com.pg85.otg.forge.biomes.OTGBiome;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.biome.Biome;
 import net.minecraftforge.event.terraingen.BiomeEvent;
@@ -34,7 +35,10 @@ public final class BiomeColorsListener
                 {
                 	// Get world name from resourcelocation
                 	// TODO: Get world name from somewhere sensical...
-                	biome = OTG.getBiome(input.getBiomeName(), input.getRegistryName().getPath().split("_")[0]);
+                    if (input instanceof OTGBiome) {
+                        biome = OTG.getBiome(input.getBiomeName(),
+                                    input.getRegistryName().getPath().split("_")[0]);
+                    }
                 }
                 catch (BiomeNotFoundException e)
                 {
@@ -116,7 +120,11 @@ public final class BiomeColorsListener
     public void waterColor(BiomeEvent.GetWaterColor waterColorEvent)
     {
     	BiomeConfig biomeConfig = lastBiomeConfig;
-    	
+
+    	if (!(waterColorEvent.getBiome() instanceof OTGBiome)) {
+    	    return;
+        }
+
     	if(lastBiome == null || !waterColorEvent.getBiome().getRegistryName().equals(lastBiome))
     	{
             biomeConfig = this.getBiomeConfig.apply(waterColorEvent.getBiome());	
