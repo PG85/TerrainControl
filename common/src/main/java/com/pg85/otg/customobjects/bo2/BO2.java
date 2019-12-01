@@ -26,7 +26,7 @@ import com.pg85.otg.util.minecraft.defaults.DefaultMaterial;
  * The good old BO2.
  */
 public class BO2 extends CustomObjectConfigFile implements CustomObject
-{	
+{
     private ObjectCoordinate[][] data = new ObjectCoordinate[4][];
 
     private MaterialSet spawnOnBlockType;
@@ -124,24 +124,24 @@ public class BO2 extends CustomObjectConfigFile implements CustomObject
     @Override
     public boolean trySpawnAt(LocalWorld world, Random random, Rotation rotation, int x, int y, int z)
     {
-    	throw new RuntimeException();
+        throw new RuntimeException();
     }
 
     @Override
     public boolean trySpawnAt(LocalWorld world, Random random, Rotation rotation, int x, int y, int z, int minY, int maxY)
     {
-    	throw new RuntimeException();
+        throw new RuntimeException();
     }
 
     private boolean canSpawnAt(LocalWorld world, Rotation rotation, int x, int y, int z)
-    {    	
+    {
         // Basic checks
-    	
-        if (y < PluginStandardValues.WORLD_DEPTH || y >= PluginStandardValues.WORLD_HEIGHT)  // Isn't this already done before this method is called?
+
+        if (y < PluginStandardValues.WORLD_DEPTH || y >= PluginStandardValues.WORLD_HEIGHT) // Isn't this already done before this method is called?
         {
             return false;
         }
-    	
+
         if ((y < spawnElevationMin) || (y > spawnElevationMax))
         {
             return false;
@@ -188,20 +188,18 @@ public class BO2 extends CustomObjectConfigFile implements CustomObject
             {
                 return false;
             }
-        }        
-        
+        }
+
         ObjectCoordinate[] objData = this.data[rotation.getRotationId()];
 
         HashSet<ChunkCoordinate> loadedChunks = new HashSet<ChunkCoordinate>();
         ChunkCoordinate chunkCoord;        
-
         for (ObjectCoordinate point : objData)
         {
             if (y + point.y < PluginStandardValues.WORLD_DEPTH || y + point.y >= PluginStandardValues.WORLD_HEIGHT)
             {
                 return false;
             }
-<<<<<<< HEAD
         	
         	chunkCoord = ChunkCoordinate.fromBlockCoords((x + point.x), (z + point.z));
     		
@@ -216,27 +214,27 @@ public class BO2 extends CustomObjectConfigFile implements CustomObject
     		}
         }
 
-        if(!((int)collisionPercentage < 100))
+        if (!((int) collisionPercentage < 100))
         {
-        	throw new RuntimeException();
+            throw new RuntimeException();
         }
-        
-        if (!dig && (int)collisionPercentage < 100)
+
+        if (!dig && (int) collisionPercentage < 100)
         {
-	        // Check all blocks
-	        int faultCounter = 0;
-	        int maxBlocksOutsideSourceBlock = (int)Math.ceil(objData.length * (collisionPercentage / 100.0));
-	        for (ObjectCoordinate point : objData)
-	        {
-	            if (collisionBlockType.contains(world.getMaterial((x + point.x), (y + point.y), (z + point.z), false)))
-	            {
-	                faultCounter++;
-	                if (faultCounter > maxBlocksOutsideSourceBlock)
-	                {
-	                    return false;
-	                }
-	            }
-	        }
+            // Check all blocks
+            int faultCounter = 0;
+            int maxBlocksOutsideSourceBlock = (int) Math.ceil(objData.length * (collisionPercentage / 100.0));
+            for (ObjectCoordinate point : objData)
+            {
+                if (collisionBlockType.contains(world.getMaterial((x + point.x), (y + point.y), (z + point.z), false)))
+                {
+                    faultCounter++;
+                    if (faultCounter > maxBlocksOutsideSourceBlock)
+                    {
+                        return false;
+                    }
+                }
+            }
         }
 
         // Call event
@@ -247,28 +245,27 @@ public class BO2 extends CustomObjectConfigFile implements CustomObject
         }
 
         return true;
-    }    
+    }
 
     @Override
     public boolean spawnAsTree(LocalWorld world, Random random, int x, int z)
     {
-   		return spawn(world, random, x, z, this.spawnElevationMin, this.spawnElevationMax);
+        return spawn(world, random, x, z, this.spawnElevationMin, this.spawnElevationMax);
     }
-    
+
     @Override
     public boolean spawnAsTree(LocalWorld world, Random random, int x, int z, int minY, int maxY)
     {
-   		return spawn(world, random, x, z, minY, maxY);
-    } 
-    
+        return spawn(world, random, x, z, minY, maxY);
+    }
+
     private boolean spawn(LocalWorld world, Random random, int x, int z, int minY, int maxY)
     {
         int y;
         if (spawnAboveGround)
         {
             y = world.getSolidHeight(x, z);
-        }
-        else if (spawnUnderGround)
+        } else if (spawnUnderGround)
         {
             int solidHeight = world.getSolidHeight(x, z);
             if (solidHeight < 1 || solidHeight <= minY)
