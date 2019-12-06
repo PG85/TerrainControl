@@ -118,6 +118,7 @@ public class ChunkProviderOTG
 
     }
     
+    //this function takes an empty Chunk (which has world chunk coordinates stored and fills it with the correct blocks through its terrain generation)
     public void generate(ChunkBuffer chunkBuffer)
     {
         ChunkCoordinate chunkCoord = chunkBuffer.getChunkCoordinate();
@@ -323,7 +324,7 @@ public class ChunkProviderOTG
         }
 
         WorldConfig worldConfig = configProvider.getWorldConfig();
-        final double xzScale = 684.41200000000003D * worldConfig.getFractureHorizontal();
+        final double xzScale = 684.41200000000003D * worldConfig.getFractureHorizontal();   //what the fuck is this number? This is also from MC
         final double yScale = 684.41200000000003D * worldConfig.getFractureVertical();
 
         if (worldConfig.oldTerrainGenerator)
