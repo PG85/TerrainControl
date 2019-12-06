@@ -118,6 +118,10 @@ public abstract class Layer
     protected static final int RiverBitOne = (1 << RiverShift);             //>>	21st Bit, 1048576
     protected static final int RiverBitTwo = (1 << (RiverShift + 1));       //>>	22nd Bit, 2097152
 
+    //Random Parameters for getting a fast random value (MMIX)
+    protected static final long MagicNumber1 = 6364136223846793005L;
+    protected static final long MagicNumber2 = 1442695040888963407L;
+
     /**
      * In a single step, checks for land and when present returns biome data
      * @param selection The location to be checked
@@ -131,11 +135,11 @@ public abstract class Layer
     private static long getScrambledBaseSeed(long baseSeed)
     {
         long scrambledBaseSeed = baseSeed;
-        scrambledBaseSeed *= (scrambledBaseSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledBaseSeed *= (scrambledBaseSeed * MagicNumber1 + MagicNumber2);
         scrambledBaseSeed += baseSeed;
-        scrambledBaseSeed *= (scrambledBaseSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledBaseSeed *= (scrambledBaseSeed * MagicNumber1 + MagicNumber2);
         scrambledBaseSeed += baseSeed;
-        scrambledBaseSeed *= (scrambledBaseSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledBaseSeed *= (scrambledBaseSeed * MagicNumber1 + MagicNumber2);
         scrambledBaseSeed += baseSeed;
         return scrambledBaseSeed;
     }
@@ -144,11 +148,11 @@ public abstract class Layer
     {
         long scrambledBaseSeed = getScrambledBaseSeed(baseSeed);
         long scrambledWorldSeed = worldSeed;
-        scrambledWorldSeed *= (scrambledWorldSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledWorldSeed *= (scrambledWorldSeed * MagicNumber1 + MagicNumber2);
         scrambledWorldSeed += scrambledBaseSeed;
-        scrambledWorldSeed *= (scrambledWorldSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledWorldSeed *= (scrambledWorldSeed * MagicNumber1 + MagicNumber2);
         scrambledWorldSeed += scrambledBaseSeed;
-        scrambledWorldSeed *= (scrambledWorldSeed * 6364136223846793005L + 1442695040888963407L);
+        scrambledWorldSeed *= (scrambledWorldSeed * MagicNumber1 + MagicNumber2);
         scrambledWorldSeed += scrambledBaseSeed;
         return scrambledWorldSeed;
     }
@@ -175,26 +179,26 @@ public abstract class Layer
     protected void initChunkSeed(long x, long z)
     {
         this.scrambledChunkSeed = this.scrambledWorldSeed;
-        this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledChunkSeed *= (this.scrambledChunkSeed * MagicNumber1 + MagicNumber2);
         this.scrambledChunkSeed += x;
-        this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledChunkSeed *= (this.scrambledChunkSeed * MagicNumber1 + MagicNumber2);
         this.scrambledChunkSeed += z;
-        this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledChunkSeed *= (this.scrambledChunkSeed * MagicNumber1 + MagicNumber2);
         this.scrambledChunkSeed += x;
-        this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledChunkSeed *= (this.scrambledChunkSeed * MagicNumber1 + MagicNumber2);
         this.scrambledChunkSeed += z;
     }
 
     protected void initGroupSeed(long x, long z)
     {
         this.scrambledGroupSeed = this.scrambledChunkSeed;
-        this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledGroupSeed *= (this.scrambledGroupSeed * MagicNumber1 + MagicNumber2);
         this.scrambledGroupSeed += x;
-        this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledGroupSeed *= (this.scrambledGroupSeed * MagicNumber1 + MagicNumber2);
         this.scrambledGroupSeed += z;
-        this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledGroupSeed *= (this.scrambledGroupSeed * MagicNumber1 + MagicNumber2);
         this.scrambledGroupSeed += x;
-        this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledGroupSeed *= (this.scrambledGroupSeed * MagicNumber1 + MagicNumber2);
         this.scrambledGroupSeed += z;
     }
 
@@ -203,7 +207,7 @@ public abstract class Layer
         int i = (int) ((this.scrambledChunkSeed >> 24) % x);
         if (i < 0)
             i += x;
-        this.scrambledChunkSeed *= (this.scrambledChunkSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledChunkSeed *= (this.scrambledChunkSeed * MagicNumber1 + MagicNumber2);
         this.scrambledChunkSeed += this.scrambledWorldSeed;
         return i;
     }
@@ -213,7 +217,7 @@ public abstract class Layer
         int i = (int) ((this.scrambledGroupSeed >> 24) % x);
         if (i < 0)
             i += x;
-        this.scrambledGroupSeed *= (this.scrambledGroupSeed * 6364136223846793005L + 1442695040888963407L);
+        this.scrambledGroupSeed *= (this.scrambledGroupSeed * MagicNumber1 + MagicNumber2);
         this.scrambledGroupSeed += this.scrambledChunkSeed;
         return i;
     }
