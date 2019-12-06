@@ -160,7 +160,6 @@ public class ChunkProviderOTG
         int chunkX = chunkCoord.getChunkX();
         int chunkZ = chunkCoord.getChunkZ();
 
-        final int four = 4;
         final int oneEightOfHeight = this.heightCap / 8;
 
         final int maxYSections = this.heightCap / 8 + 1;
@@ -180,7 +179,7 @@ public class ChunkProviderOTG
             this.biomeArray = biomeGenerator.getBiomes(this.biomeArray, chunkX * CHUNK_X_SIZE, chunkZ * CHUNK_Z_SIZE, CHUNK_X_SIZE, CHUNK_Z_SIZE, OutputType.DEFAULT_FOR_WORLD);
         }
 
-        generateTerrainNoise(chunkX * four, 0, chunkZ * four, maxYSections, usedYSections);
+        generateTerrainNoise(chunkX * 4, 0, chunkZ * 4, maxYSections, usedYSections);
 
         // Now that the raw terrain is generated, replace raw biome array with
         // fine-tuned one.
@@ -189,25 +188,22 @@ public class ChunkProviderOTG
             this.biomeArray = biomeGenerator.getBiomes(this.biomeArray, chunkX * CHUNK_X_SIZE, chunkZ * CHUNK_Z_SIZE, CHUNK_X_SIZE, CHUNK_Z_SIZE, OutputType.DEFAULT_FOR_WORLD);
         }
 
-        final double oneEight = 0.125D;
-        final double oneFourth = 0.25D;
-
-        for (int x = 0; x < four; x++)
+        for (int x = 0; x < 4; x++)
         {
-            for (int z = 0; z < four; z++)
+            for (int z = 0; z < 4; z++)
             {
                 // Water level (fill final array based on smaller,
                 // non-smoothed
                 // array)
                 double waterLevel_x0z0 = this.waterLevelRaw[(x + 0) * NOISE_MAX_X + (z + 0)] & 0xFF;
                 double waterLevel_x0z1 = this.waterLevelRaw[(x + 0) * NOISE_MAX_X + (z + 1)] & 0xFF;
-                final double waterLevel_x1z0 = ((this.waterLevelRaw[(x + 1) * NOISE_MAX_X + (z + 0)] & 0xFF) - waterLevel_x0z0) * oneFourth;
-                final double waterLevel_x1z1 = ((this.waterLevelRaw[(x + 1) * NOISE_MAX_X + (z + 1)] & 0xFF) - waterLevel_x0z1) * oneFourth;
+                final double waterLevel_x1z0 = ((this.waterLevelRaw[(x + 1) * NOISE_MAX_X + (z + 0)] & 0xFF) - waterLevel_x0z0) / 4;
+                final double waterLevel_x1z1 = ((this.waterLevelRaw[(x + 1) * NOISE_MAX_X + (z + 1)] & 0xFF) - waterLevel_x0z1) / 4;
 
                 for (int piece_x = 0; piece_x < 4; piece_x++)
                 {
                     double waterLevelForArray = waterLevel_x0z0;
-                    final double d17_1 = (waterLevel_x0z1 - waterLevel_x0z0) * oneFourth;
+                    final double d17_1 = (waterLevel_x0z1 - waterLevel_x0z0) / 4;
 
                     for (int piece_z = 0; piece_z < 4; piece_z++)
                     {
@@ -228,22 +224,22 @@ public class ChunkProviderOTG
                     double x1z0 = this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 0)) * maxYSections + (y + 0))];
                     double x1z1 = this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 1)) * maxYSections + (y + 0))];
 
-                    final double x0z0y1 = (this.rawTerrain[(((x + 0) * NOISE_MAX_Z + (z + 0)) * maxYSections + (y + 1))] - x0z0) * oneEight;
-                    final double x0z1y1 = (this.rawTerrain[(((x + 0) * NOISE_MAX_Z + (z + 1)) * maxYSections + (y + 1))] - x0z1) * oneEight;
-                    final double x1z0y1 = (this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 0)) * maxYSections + (y + 1))] - x1z0) * oneEight;
-                    final double x1z1y1 = (this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 1)) * maxYSections + (y + 1))] - x1z1) * oneEight;
+                    final double x0z0y1 = (this.rawTerrain[(((x + 0) * NOISE_MAX_Z + (z + 0)) * maxYSections + (y + 1))] - x0z0) / 8;
+                    final double x0z1y1 = (this.rawTerrain[(((x + 0) * NOISE_MAX_Z + (z + 1)) * maxYSections + (y + 1))] - x0z1) / 8;
+                    final double x1z0y1 = (this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 0)) * maxYSections + (y + 1))] - x1z0) / 8;
+                    final double x1z1y1 = (this.rawTerrain[(((x + 1) * NOISE_MAX_Z + (z + 1)) * maxYSections + (y + 1))] - x1z1) / 8;
 
                     for (int piece_y = 0; piece_y < 8; piece_y++)
                     {
                         double d11 = x0z0;
                         double d12 = x0z1;
-                        final double d13 = (x1z0 - x0z0) * oneFourth;
-                        final double d14 = (x1z1 - x0z1) * oneFourth;
+                        final double d13 = (x1z0 - x0z0) / 4;
+                        final double d14 = (x1z1 - x0z1) / 4;
 
                         for (int piece_x = 0; piece_x < 4; piece_x++)
                         {
                             double d16 = d11;
-                            final double d17 = (d12 - d11) * oneFourth;
+                            final double d17 = (d12 - d11) / 4;
                             for (int piece_z = 0; piece_z < 4; piece_z++)
                             {
                                 final BiomeConfig biomeConfig = toBiomeConfig(this.biomeArray[(z * 4 + piece_z) * 16 + (piece_x + x * 4)]);
